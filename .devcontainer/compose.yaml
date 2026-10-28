@@ -1,0 +1,62 @@
+# Ontwikkelomgeving: werkcontainer plus de database en de model registry.
+# Alleen voor lokaal ontwikkelen; wachtwoorden hier zijn geen geheimen.
+name: ses-dev
+
+services:
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ../..:/workspaces:cached
+    command: sleep infinity
+    environment:
+      DATABASE_URL: postgresql://ses:ses@db:5432/ses
+      PGHOST: db
+      PGUSER: ses
+      PGPASSWORD: ses
+      PGDATABASE: ses
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+    depends_on:
+      db:
+        condition: service_healthy
+      mlflow:
+        condition: service_started
+
+  db:
+    image: timescale/timescaledb:2.30.2-pg17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ses
+      POSTGRES_PASSWORD: ses
+      POSTGRES_DB: ses
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ../database/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ses -d ses"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v3.16.1
+    restart: unless-stopped
+    command: >
+      mlflow server
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri sqlite:////mlflow/mlflow.db
+      --artifacts-destination /mlflow/artifacts
+      --serve-artifacts
+      --allowed-hosts mlflow,mlflow:*,localhost,localhost:*,127.0.0.1:*
+    volumes:
+      - mlflow-data:/mlflow
+    ports:
+      - "127.0.0.1:5000:5000"
+
+volumes:
+  db-data:
+  mlflow-data:
