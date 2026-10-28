@@ -220,3 +220,5 @@ __marimo__/
 # Local meter data exports (never commit real data)
 data/*
 !data/README.md
+
+CLAUDE.md
