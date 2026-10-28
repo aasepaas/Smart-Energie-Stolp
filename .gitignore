@@ -216,3 +216,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Local meter data exports (never commit real data)
+data/*
+!data/README.md
