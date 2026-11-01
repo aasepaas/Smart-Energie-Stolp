@@ -10,3 +10,9 @@ Ontwerp kan in de terminal gestart worden met de volgende commando (vanuit de ro
 npx likec4 start
 
 hiervoor is de extension likec4 in Visual Studio Code nodig.
+
+Voor een automatische export van de views, gebruik:
+
+node export-views.mjs
+
+in de architecture folder

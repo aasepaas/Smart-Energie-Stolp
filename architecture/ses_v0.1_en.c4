@@ -192,11 +192,11 @@ model {
     // ─────────── Frontend API ───────────
     frontendAPI = container 'Frontend API' {
       description 'Single entry point for the web app: checks role and data ownership, answers queries and accepts uploads'
-      technology 'Python, Flask'
+      technology 'Python, FastAPI'
 
       component apiEndpoints 'API endpoints' {
         description 'REST routes for the web app; validates input and returns JSON'
-        technology 'Flask blueprints'
+        technology 'FastAPI routers, Pydantic'
       }
       component authentication 'Authentication' {
         description 'Verifies the JWT and checks whether the role and owner may access the requested data'
@@ -232,11 +232,11 @@ model {
     // ─────────── Backend API ───────────
     backendAPI = container 'Backend API' {
       description 'Internal API between the backend services and the database'
-      technology 'Python, Flask'
+      technology 'Python, FastAPI'
 
       component apiEndpoints 'API endpoints' {
         description 'Internal REST routes for readings, links, simultaneity, forecasts and advice'
-        technology 'Flask blueprints'
+        technology 'FastAPI routers, Pydantic'
       }
       component authentication 'Authentication' {
         description 'Checks which service makes the request and which tables it may write'
@@ -265,7 +265,7 @@ model {
     // ─────────── Data processing service (import + simultaneity) ───────────
     processingService = container 'Data processing service' {
       description 'Imports meter data idempotently, links meters to participants and calculates simultaneity per quarter hour'
-      technology 'Python, Flask, pandas'
+      technology 'Python, FastAPI, pandas'
 
       component importEndpoint 'Import endpoint' {
         description 'Receives the CSV file, records file name, hash and period and starts an import job'
@@ -339,7 +339,7 @@ model {
 
       component trainingOrchestrator 'Training orchestrator' {
         description 'Receives the trigger and runs effect measurement, feature building, model selection, training and evaluation in order'
-        technology 'Flask, POST /training-runs'
+        technology 'FastAPI, POST /training-runs'
       }
       component featureBuilder 'Feature builder' {
         description 'Joins readings and calendar features into a training set (no lags of yesterday)'
