@@ -8,4 +8,8 @@ Container **Database**: PostgreSQL met TimescaleDB.
 | `migrations/` | schemawijzigingen met Alembic |
 | `seed/` | nepdata voor ontwikkeling en tests |
 
-Tabellen: `readings`, `meter_links`, `participants`, `users`, `simultaneity`, `forecasts`, `advice`, `energy_prices`, `settings`, `import_log`.
+Het ontwerp staat in `erd/ses-database.dbml` (open met de dbdiagram-extensie). Het schema zelf wordt aangemaakt met de Alembic-migraties in `migrations/`.
+
+Tabellen: `participants`, `users`, `participant_appliances`, `settings`, `import_log`, `meters`, `readings`, `community_simultaneity`, `forecasts`, `energy_prices`, `advice`.
+
+Hypertables (TimescaleDB): `readings`, `community_simultaneity`, `forecasts`, `energy_prices`.
