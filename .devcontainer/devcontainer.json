@@ -17,6 +17,7 @@
     "8000": { "label": "Flask-service" }
   },
   "postCreateCommand": "bash .devcontainer/post-create.sh",
+  "postStartCommand": "alembic upgrade head",
   "customizations": {
     "vscode": {
       "extensions": [

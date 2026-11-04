@@ -14,19 +14,16 @@ Er is **geen automatische sync** tussen de DBML en de database. De DBML is het o
 - DBML kent geen TimescaleDB-hypertables en de meeste CHECK-constraints, die staan alleen in de migraties;
 - een database met data moet je wijzigen (`ALTER TABLE`), niet opnieuw opbouwen uit het ontwerp.
 
-Wat wel automatisch gaat: bij elke **Rebuild Container** draait `alembic upgrade head`, zodat iedereen dezelfde migraties heeft.
+Wat wel automatisch gaat: bij elke start van de dev container draait `alembic upgrade head`, zodat iedereen dezelfde migraties heeft.
 
 ## Werkwijze bij een wijziging
 
 1. Pas `ses-database.dbml` aan.
-2. Maak een nieuwe migratie:
-   ```bash
-   alembic -c database/alembic.ini revision -m "add column x to readings"
-   ```
-3. Schrijf in het nieuwe bestand in `../migrations/versions/` de SQL voor `upgrade()` en het terugdraaien in `downgrade()`.
+2. Maak een nieuwe migratie in `../migrations/versions/` (zie `../migrations/README.md`).
+3. Schrijf daarin de SQL voor `upgrade()` en het terugdraaien in `downgrade()`.
 4. Voer uit en controleer:
    ```bash
-   alembic -c database/alembic.ini upgrade head
+   alembic upgrade head
    psql -c '\d readings'
    ```
 5. Zet de DBML-wijziging en de migratie in dezelfde commit en PR.

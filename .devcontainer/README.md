@@ -19,12 +19,12 @@ Ontwikkelomgeving voor VS Code (Dev Containers). Eén commando start een werkcon
    cd ~/Smart-Energie-Stolp
    code .
    ```
-3. `Ctrl+Shift+P` en kies **Dev Containers: Reopen in Container**. Kies **Rebuild and Reopen in Container** de eerste keer, en na elke wijziging in `.devcontainer/` of `database/requirements.txt`.
+3. `Ctrl+Shift+P` en kies **Dev Containers: Reopen in Container**. Kies **Rebuild and Reopen in Container** de eerste keer, en na elke wijziging in `.devcontainer/`.
 
 Controle in de terminal van de container:
 
 ```bash
-alembic -c database/alembic.ini current   # verwacht: <laatste revisie> (head)
+alembic current   # verwacht: <laatste revisie> (head)
 psql -c '\dt'                             # alle tabellen
 ```
 
@@ -44,17 +44,17 @@ psql -c '\dt'                             # alle tabellen
 
 `post-create.sh` draait na elke (re)build en installeert alleen wat al bestaat:
 
-1. `database/requirements.txt` (Alembic en psycopg), daarna `alembic upgrade head`: het schema wordt bijgewerkt naar de nieuwste migratie;
+1. Alembic en psycopg, voor de databasemigraties;
 2. `packages/ses-common` en elke service met een `pyproject.toml`, editable;
 3. de `node_modules` van de web app, als er een `package.json` is.
 
-Na een `git pull` met nieuwe migraties zonder rebuild: `alembic -c database/alembic.ini upgrade head`.
+Bij **elke start** van de container draait daarna `alembic upgrade head` (`postStartCommand`), zodat nieuwe migraties na een `git pull` vanzelf worden toegepast.
 
 ## Data en opnieuw beginnen
 
 - De database staat in het volume `ses-dev_db-data`, MLflow in `ses-dev_mlflow-data`. Ze blijven bewaard als je de container sluit.
 - De SQL in `database/init/` draait alleen bij de eerste start van een lege database (extensies en rollen). Het schema zelf komt uit de Alembic-migraties.
-- Database leegmaken zonder het volume te verwijderen: `alembic -c database/alembic.ini downgrade base` en daarna `upgrade head`.
+- Database leegmaken zonder het volume te verwijderen: `alembic downgrade base` en daarna `upgrade head`.
 - Helemaal opnieuw beginnen: container sluiten, `docker volume rm ses-dev_db-data` en **Rebuild and Reopen in Container**.
 
 Gebruik alleen nepdata uit `database/seed/` of lokale exports in `data/`; die staan niet in git.
@@ -67,4 +67,4 @@ Gebruik alleen nepdata uit `database/seed/` of lokale exports in `data/`; die st
 | `Cannot connect to the Docker daemon` | Docker Desktop draait nog niet; wachten tot **Engine running** |
 | `port 5432 is already allocated` | er draait al een PostgreSQL op je pc; stop die of wijzig de poort in `compose.yaml` |
 | `$'\r': command not found` | de repo staat in een Windows-map met Windows-regeleinden; clone in WSL |
-| Tabellen ontbreken | `alembic -c database/alembic.ini upgrade head` draaien en de foutmelding lezen |
+| Tabellen ontbreken | `alembic upgrade head` draaien en de foutmelding lezen |

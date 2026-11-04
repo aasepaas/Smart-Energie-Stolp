@@ -5,11 +5,8 @@ set -euo pipefail
 
 python -m pip install --upgrade pip
 
-# Alembic en de databasedriver, daarna het schema bijwerken (de db-service is dan al healthy)
-if [ -f database/requirements.txt ]; then
-  pip install -r database/requirements.txt
-  alembic -c database/alembic.ini upgrade head
-fi
+# Databasemigraties; alembic upgrade head draait bij elke start (postStartCommand)
+pip install alembic "psycopg[binary]"
 
 if [ -f packages/ses-common/pyproject.toml ]; then
   pip install -e packages/ses-common
