@@ -86,7 +86,7 @@ Het model registry (MLflow) heeft een eigen opslag en valt buiten deze rollen.
 De rollen worden aangemaakt met `rollen_en_rechten.sql`, nadat de tabellen bestaan:
 
 ```bash
-psql -U postgres -d ses -v ON_ERROR_STOP=1 -f rollen_en_rechten.sql
+psql -h localhost -p 5432 -U ses -d ses -v ON_ERROR_STOP=1 -f rollen_en_rechten.sql
 ```
 
 Alle inlogrollen krijgen tijdelijk het wachtwoord `user`. Wijzig ze direct daarna:
