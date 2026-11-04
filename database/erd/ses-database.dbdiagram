@@ -1,0 +1,173 @@
+{
+  "version": "3.0.0",
+  "darkMode": true,
+  "gridEnabling": false,
+  "currentViewName": null,
+  "defaultView": {
+    "detailLevel": "All",
+    "relationshipMode": "All",
+    "tablePositions": [
+      {
+        "name": "participants",
+        "schemaName": "public",
+        "x": 12,
+        "y": 450
+      },
+      {
+        "name": "users",
+        "schemaName": "public",
+        "x": 499.391796875,
+        "y": 450
+      },
+      {
+        "name": "participant_appliances",
+        "schemaName": "public",
+        "x": 499.391796875,
+        "y": 688
+      },
+      {
+        "name": "settings",
+        "schemaName": "public",
+        "x": 394.16748046875,
+        "y": 12
+      },
+      {
+        "name": "import_log",
+        "schemaName": "public",
+        "x": 1152.5205078125,
+        "y": 12
+      },
+      {
+        "name": "meters",
+        "schemaName": "public",
+        "x": 499.391796875,
+        "y": 990
+      },
+      {
+        "name": "readings",
+        "schemaName": "public",
+        "x": 1116.78828125,
+        "y": 450
+      },
+      {
+        "name": "community_simultaneity",
+        "schemaName": "public",
+        "x": 737.40673828125,
+        "y": 12
+      },
+      {
+        "name": "forecasts",
+        "schemaName": "public",
+        "x": 499.391796875,
+        "y": 1132
+      },
+      {
+        "name": "energy_prices",
+        "schemaName": "public",
+        "x": 12,
+        "y": 12
+      },
+      {
+        "name": "advice",
+        "schemaName": "public",
+        "x": 499.391796875,
+        "y": 1530
+      }
+    ],
+    "tableGroupCollapseStates": [],
+    "stickyNoteLayouts": [],
+    "referencePaths": [
+      {
+        "firstFieldNames": [
+          "participant_id"
+        ],
+        "firstTableName": "users",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "id"
+        ],
+        "secondTableName": "participants",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "participant_id"
+        ],
+        "firstTableName": "participant_appliances",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "id"
+        ],
+        "secondTableName": "participants",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "participant_id"
+        ],
+        "firstTableName": "meters",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "id"
+        ],
+        "secondTableName": "participants",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "meter_reference"
+        ],
+        "firstTableName": "readings",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "meter_reference"
+        ],
+        "secondTableName": "meters",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "participant_id"
+        ],
+        "firstTableName": "forecasts",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "id"
+        ],
+        "secondTableName": "participants",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      },
+      {
+        "firstFieldNames": [
+          "participant_id"
+        ],
+        "firstTableName": "advice",
+        "firstSchemaName": "public",
+        "firstRelation": "*",
+        "secondFieldNames": [
+          "id"
+        ],
+        "secondTableName": "participants",
+        "secondSchemaName": "public",
+        "secondRelation": "1",
+        "checkPoints": []
+      }
+    ]
+  },
+  "views": {}
+}

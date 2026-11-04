@@ -6,7 +6,7 @@
 Project ses {
   database_type: 'PostgreSQL'
   Note: '''
-    Hypertables (TimescaleDB): readings, simultaneity, forecasts, energy_prices.
+    Hypertables (TimescaleDB): readings, community_simultaneity, forecasts, energy_prices.
     Tijdresolutie is een kwartier.
     Het modelregister (MLflow) heeft een eigen store en staat hier niet in.
     Rollen: frontend role (alleen eigen deelnemer, row-level security) en backend role.
@@ -133,28 +133,32 @@ Table readings {
 
 // ───────────── Resultaten ─────────────
 
-Table simultaneity {
-  participant_id uuid [not null]
-  ts timestamptz [not null]
-  shared_kwh numeric(10,3) [not null, note: 'Lokaal gedeelde energie, pro rata verdeeld over deelnemers']
+Table community_simultaneity {
+  ts timestamptz [pk, note: 'Begin van het kwartier in UTC']
+  total_to_grid_kwh numeric(10,3) [not null, note: 'Som van to_grid_kwh van alle meters in dit kwartier (teruglevering aan het net)']
+  total_from_grid_kwh numeric(10,3) [not null, note: 'Som van from_grid_kwh van alle meters in dit kwartier (afname van het net)']
+  shared_kwh numeric(10,3) [not null, note: 'Lokaal gedeelde energie: het kleinste van total_to_grid_kwh en total_from_grid_kwh']
+  meter_count smallint [not null, note: 'Aantal meters met data in dit kwartier, om onvolledige kwartieren te herkennen']
 
-  indexes {
-    (participant_id, ts) [pk]
-  }
-
-  Note: 'TimescaleDB hypertable op ts. Berekend door de Data processing service na elke import.'
+  Note: '''
+    Simultaneity van de hele Stolp, één rij per kwartier. TimescaleDB hypertable op ts.
+    Berekend door de Data processing service na elke import, over alle meters in readings
+    (onafhankelijk van de koppeling aan deelnemers).
+    KPI over een periode: som(shared_kwh) / som(total_to_grid_kwh).
+    Per deelnemer niet opgeslagen: aandeel in total_from_grid_kwh keer shared_kwh, op aanvraag berekend.
+  '''
 }
 
 Table forecasts {
   participant_id uuid [not null]
   ts timestamptz [not null, note: 'Kwartier waar de voorspelling over gaat']
   run_date date [not null, note: 'Avond waarop de voorspelling is gemaakt, historie blijft bewaard']
-  generation_p10 numeric(10,3)
-  generation_p50 numeric(10,3)
-  generation_p90 numeric(10,3)
-  consumption_p10 numeric(10,3)
-  consumption_p50 numeric(10,3)
-  consumption_p90 numeric(10,3)
+  to_grid_p10 numeric(10,3) [note: 'Voorspelde teruglevering']
+  to_grid_p50 numeric(10,3)
+  to_grid_p90 numeric(10,3)
+  from_grid_p10 numeric(10,3) [note: 'Voorspelde afname']
+  from_grid_p50 numeric(10,3)
+  from_grid_p90 numeric(10,3)
   model_version varchar(100) [not null, note: 'Versie uit het MLflow-register']
 
   indexes {
@@ -198,7 +202,6 @@ Ref: users.participant_id > participants.id [delete: set null]
 Ref: participant_appliances.participant_id > participants.id [delete: cascade]
 Ref: meters.participant_id > participants.id [delete: set null]
 Ref: readings.meter_reference > meters.meter_reference [delete: restrict]
-Ref: simultaneity.participant_id > participants.id [delete: cascade]
 Ref: forecasts.participant_id > participants.id [delete: cascade]
 Ref: advice.participant_id > participants.id [delete: cascade]
 
@@ -218,7 +221,7 @@ TableGroup meter_data {
 }
 
 TableGroup results {
-  simultaneity
+  community_simultaneity
   forecasts
   energy_prices
   advice
