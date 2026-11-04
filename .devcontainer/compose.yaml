@@ -17,6 +17,7 @@ services:
       PGPASSWORD: ses
       PGDATABASE: ses
       MLFLOW_TRACKING_URI: http://mlflow:5000
+      ALEMBIC_CONFIG: database/alembic.ini   # zodat alembic zonder -c werkt vanuit de root van de repo
     depends_on:
       db:
         condition: service_healthy

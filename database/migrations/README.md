@@ -4,7 +4,7 @@ Schemawijzigingen met Alembic. Alembic houdt in de tabel `alembic_version` bij w
 
 | Bestand | Inhoud |
 | --- | --- |
-| `../../alembic.ini` | waar de migraties staan (in de root, zodat `alembic` zonder opties werkt) |
+| `../alembic.ini` | waar de migraties staan; de dev container zet `ALEMBIC_CONFIG` hiernaar, zodat `alembic` zonder `-c` werkt |
 | `env.py` | maakt verbinding met `DATABASE_URL` en voert de migraties uit |
 | `versions/` | de migraties, in gewone SQL |
 
