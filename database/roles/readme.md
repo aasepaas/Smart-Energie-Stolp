@@ -83,24 +83,27 @@ Het model registry (MLflow) heeft een eigen opslag en valt buiten deze rollen.
 
 ## 4. Installatie
 
-De rollen worden aangemaakt met `rollen_en_rechten.sql`, nadat de tabellen bestaan:
+De rollen, rechten en row-level security worden aangemaakt door Alembic-migratie `0001` (`../migrations/versions/0001_initial_schema.py`), samen met de tabellen. In de dev container gebeurt dat vanzelf bij elke start (`alembic upgrade head`).
+
+- Rollen gelden voor de hele PostgreSQL-server. De migratie maakt ze alleen aan als ze nog niet bestaan, en een `downgrade` laat ze staan.
+- De wachtwoorden van de inlogrollen staan niet in git. De migratie zet ze uit omgevingsvariabelen; zonder variabele krijgt de rol geen wachtwoord en kan hij niet inloggen.
+
+| Rol | Variabele |
+| --- | --- |
+| `ses_dba` | `SES_PASSWORD_DBA` |
+| `ses_frontend` | `SES_PASSWORD_FRONTEND` |
+| `ses_backend` | `SES_PASSWORD_BACKEND` |
+| `ses_backup` | `SES_PASSWORD_BACKUP` |
+
+In de dev container staan ze in `.devcontainer/compose.yaml` (wachtwoord `user`, alleen lokaal). Op de server komen ze uit het `.env`-bestand. Een wachtwoord later wijzigen: `ALTER ROLE ses_frontend PASSWORD '<nieuw wachtwoord>';`.
+
+Een nieuwe tabel in een latere migratie krijgt geen rechten vanzelf: zet de `GRANT`s en policies in dezelfde migratie en werk de matrix hierboven bij.
+
+## 5. Test
 
 ```bash
-psql -v ON_ERROR_STOP=1 -f rollen_en_rechten.sql
+pip install pytest
+pytest database/roles/test_rollen_en_rechten.py -v
 ```
 
-Alle inlogrollen krijgen tijdelijk het wachtwoord `user`. Wijzig ze direct daarna:
-
-```sql
-ALTER ROLE ses_dba      PASSWORD '<nieuw wachtwoord>';
-ALTER ROLE ses_frontend PASSWORD '<nieuw wachtwoord>';
-ALTER ROLE ses_backend  PASSWORD '<nieuw wachtwoord>';
-ALTER ROLE ses_backup   PASSWORD '<nieuw wachtwoord>';
-```
-
-Zet de echte wachtwoorden in het `.env`-bestand op de server, niet in Git.
-
-Uitvoeren van test kan met de .py bestand daarvoor is de volgende dependency voor nodig:
-```
-pip install pytest "psycopg[binary]"
-```
+De test gebruikt dezelfde variabelen voor de wachtwoorden en draait in een transactie die aan het eind wordt teruggedraaid.

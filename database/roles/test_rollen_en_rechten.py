@@ -1,7 +1,7 @@
 """
 Geautomatiseerde test van de rollen en rechten van Smart Energie Stolp.
 
-Controleert of rollen_en_rechten.sql correct is uitgevoerd en klopt met het
+Controleert of de rollen en rechten uit migratie 0001 kloppen met het
 ontwerp in README.md:
 
   1. Rollen: bestaan ze, met de juiste eigenschappen en lidmaatschappen?
@@ -222,6 +222,7 @@ def data(conn):
         "meter_a": f"TA{tag}", "meter_b": f"TB{tag}",
         "email_a": f"test-a-{tag}@ses.test",
         "ts": "2099-01-01 12:00+00",
+        "ts_end": "2099-01-01 13:00+00",  # suggested_end must be after suggested_start
     }
     with conn.cursor() as cur:
         cur.execute("INSERT INTO participants (id, name) VALUES (%s, %s), (%s, %s)",
@@ -244,7 +245,7 @@ def data(conn):
                     "suggested_start, suggested_end, impact, expected_shared_kwh) VALUES "
                     "(%s, '2099-01-01', 1, 'transport', %s, %s, 'high', 6), "
                     "(%s, '2099-01-01', 1, 'transport', %s, %s, 'high', 6)",
-                    [a, d["ts"], d["ts"], b, d["ts"], d["ts"]])
+                    [a, d["ts"], d["ts_end"], b, d["ts"], d["ts_end"]])
         cur.execute("INSERT INTO community_simultaneity VALUES (%s, 1, 2, 1, 2) "
                     "ON CONFLICT DO NOTHING", [d["ts"]])
         cur.execute("INSERT INTO energy_prices VALUES (%s, 0.25) ON CONFLICT DO NOTHING", [d["ts"]])
@@ -460,7 +461,7 @@ def test_herhaalde_avondrun_behoudt_feedback(conn, data):
                 "ON CONFLICT (participant_id, advice_date, rank) DO UPDATE SET "
                 "appliance_category = EXCLUDED.appliance_category, impact = EXCLUDED.impact, "
                 "expected_shared_kwh = EXCLUDED.expected_shared_kwh",
-                [data["a"], data["ts"], data["ts"]])
+                [data["a"], data["ts"], data["ts_end"]])
             cur.execute("SELECT appliance_category, feedback FROM advice "
                         "WHERE participant_id = %s AND advice_date = '2099-01-01' AND rank = 1", [data["a"]])
             assert cur.fetchone() == ("heat_pump", "accepted")
