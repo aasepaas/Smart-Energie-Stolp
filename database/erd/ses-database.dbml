@@ -104,7 +104,7 @@ Table import_log {
 }
 
 Table meters {
-  meter_reference varchar(20) [pk, note: 'Bijvoorbeeld KV01 of GV03, zoals in de CSV']
+  meter_reference varchar(64) [pk, note: 'Zoals in de CSV: KV01, GV03 of meter_ + 24 hex']
   participant_id uuid [note: 'Leeg tot de admin de meter aan een deelnemer koppelt']
 
   indexes {
@@ -119,7 +119,7 @@ Table meters {
 }
 
 Table readings {
-  meter_reference varchar(20) [not null]
+  meter_reference varchar(64) [not null]
   ts timestamptz [not null, note: 'Begin van het kwartier in UTC: interval_start + interval_time uit de CSV']
   to_grid_kwh numeric(10,3) [not null, note: 'to_grid_kWh, teruglevering. Decimale komma in de CSV']
   from_grid_kwh numeric(10,3) [not null, note: 'from_grid_kWh, afname. Decimale komma in de CSV']
@@ -198,7 +198,7 @@ Table advice {
 
 // ───────────── Relaties ─────────────
 
-Ref: users.participant_id > participants.id [delete: set null]
+Ref: users.participant_id > participants.id [delete: cascade]
 Ref: participant_appliances.participant_id > participants.id [delete: cascade]
 Ref: meters.participant_id > participants.id [delete: set null]
 Ref: readings.meter_reference > meters.meter_reference [delete: restrict]
