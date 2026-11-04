@@ -99,3 +99,8 @@ ALTER ROLE ses_backup   PASSWORD '<nieuw wachtwoord>';
 ```
 
 Zet de echte wachtwoorden in het `.env`-bestand op de server, niet in Git.
+
+Uitvoeren van test kan met de .py bestand daarvoor is de volgende dependency voor nodig:
+```
+pip install pytest "psycopg[binary]"
+```
