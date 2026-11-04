@@ -1,0 +1,225 @@
+// Smart Energie Stolp (SES): compact databasemodel met alle functionaliteit uit het C4-model
+// Gebaseerd op de CSV-export van de netbeheerder (meter_reference, interval, to_grid_kWh, from_grid_kWh).
+// PostgreSQL met TimescaleDB. Alle tijden zijn timestamptz in UTC.
+// Open in VS Code met de dbdiagram / DBML extensie.
+
+Project ses {
+  database_type: 'PostgreSQL'
+  Note: '''
+    Hypertables (TimescaleDB): readings, simultaneity, forecasts, energy_prices.
+    Tijdresolutie is een kwartier.
+    Het modelregister (MLflow) heeft een eigen store en staat hier niet in.
+    Rollen: frontend role (alleen eigen deelnemer, row-level security) en backend role.
+  '''
+}
+
+// ───────────── Enums ─────────────
+
+Enum user_role {
+  participant
+  administrator
+}
+
+Enum appliance_category {
+  transport
+  heat_pump
+  air_conditioning
+}
+
+Enum impact_class {
+  high
+  medium
+  low
+}
+
+Enum advice_feedback {
+  accepted
+  rejected
+}
+
+Enum import_status {
+  running
+  succeeded
+  failed
+}
+
+// ───────────── Deelnemers en accounts ─────────────
+
+Table participants {
+  id uuid [pk, default: `gen_random_uuid()`]
+  name varchar(100) [not null, unique, note: 'Naam of pseudoniem, ingevoerd door de admin']
+
+  Note: 'Deelnemer van de Energiestolp'
+}
+
+Table users {
+  id uuid [pk, default: `gen_random_uuid()`]
+  email varchar(255) [not null, unique]
+  password_hash varchar(255) [not null]
+  role user_role [not null]
+  participant_id uuid [note: 'Verplicht bij rol participant, leeg bij administrator']
+
+  Note: 'Inlogaccounts van het webportaal'
+}
+
+Table participant_appliances {
+  id uuid [pk, default: `gen_random_uuid()`]
+  participant_id uuid [not null]
+  category appliance_category [not null]
+  power_kw numeric(6,2) [not null, note: 'Vermogen van het apparaat']
+  earliest_start time [not null, note: 'Comfortgrens: vroegste starttijd']
+  latest_end time [not null, note: 'Comfortgrens: uiterlijk klaar']
+  min_run_minutes smallint [not null, note: 'Minimale looptijd per dag']
+
+  indexes {
+    (participant_id, category) [unique]
+  }
+
+  Note: 'Flexibele apparaten en comfortgrenzen per deelnemer, invoer voor de optimizer'
+}
+
+Table settings {
+  key varchar(100) [pk]
+  value jsonb [not null]
+  updated_at timestamptz [not null, default: `now()`]
+
+  Note: 'Systeeminstellingen, beheerd door de admin'
+}
+
+// ───────────── Meterdata ─────────────
+
+Table import_log {
+  id uuid [pk, default: `gen_random_uuid()`]
+  file_name varchar(255) [not null]
+  file_hash char(64) [not null, unique, note: 'SHA-256, voorkomt dat dezelfde CSV twee keer wordt verwerkt']
+  period_start timestamptz
+  period_end timestamptz
+  row_count integer
+  new_meter_count integer [note: 'Meters die voor het eerst in deze import voorkomen']
+  status import_status [not null, default: 'running']
+  error_message text
+  started_at timestamptz [not null, default: `now()`]
+
+  Note: 'Eén rij per CSV-import, toont het importresultaat in het panel'
+}
+
+Table meters {
+  meter_reference varchar(20) [pk, note: 'Bijvoorbeeld KV01 of GV03, zoals in de CSV']
+  participant_id uuid [note: 'Leeg tot de admin de meter aan een deelnemer koppelt']
+
+  indexes {
+    participant_id
+  }
+
+  Note: '''
+    Wordt automatisch aangemaakt bij import van een nieuwe meter_reference.
+    De admin koppelt de meter in het panel aan een deelnemer.
+    Een deelnemer kan meerdere meters hebben (bijvoorbeeld een KV en een GV).
+  '''
+}
+
+Table readings {
+  meter_reference varchar(20) [not null]
+  ts timestamptz [not null, note: 'Begin van het kwartier in UTC: interval_start + interval_time uit de CSV']
+  to_grid_kwh numeric(10,3) [not null, note: 'to_grid_kWh, teruglevering. Decimale komma in de CSV']
+  from_grid_kwh numeric(10,3) [not null, note: 'from_grid_kWh, afname. Decimale komma in de CSV']
+
+  indexes {
+    (meter_reference, ts) [pk, note: 'Upsert-sleutel: opnieuw importeren overschrijft, maakt geen dubbelen']
+  }
+
+  Note: 'TimescaleDB hypertable op ts. Een ontbrekend kwartier is een ontbrekende rij, geen nul.'
+}
+
+// ───────────── Resultaten ─────────────
+
+Table simultaneity {
+  participant_id uuid [not null]
+  ts timestamptz [not null]
+  shared_kwh numeric(10,3) [not null, note: 'Lokaal gedeelde energie, pro rata verdeeld over deelnemers']
+
+  indexes {
+    (participant_id, ts) [pk]
+  }
+
+  Note: 'TimescaleDB hypertable op ts. Berekend door de Data processing service na elke import.'
+}
+
+Table forecasts {
+  participant_id uuid [not null]
+  ts timestamptz [not null, note: 'Kwartier waar de voorspelling over gaat']
+  run_date date [not null, note: 'Avond waarop de voorspelling is gemaakt, historie blijft bewaard']
+  generation_p10 numeric(10,3)
+  generation_p50 numeric(10,3)
+  generation_p90 numeric(10,3)
+  consumption_p10 numeric(10,3)
+  consumption_p50 numeric(10,3)
+  consumption_p90 numeric(10,3)
+  model_version varchar(100) [not null, note: 'Versie uit het MLflow-register']
+
+  indexes {
+    (participant_id, ts, run_date) [pk]
+  }
+
+  Note: 'TimescaleDB hypertable op ts. Geschreven door de Forecast pipeline, gelezen voor effectmeting.'
+}
+
+Table energy_prices {
+  ts timestamptz [pk, note: 'Begin van het kwartier in UTC']
+  price_eur_per_kwh numeric(8,5) [not null]
+
+  Note: 'Dynamische day-ahead prijzen van de Apex data API, TimescaleDB hypertable op ts'
+}
+
+Table advice {
+  id uuid [pk, default: `gen_random_uuid()`]
+  participant_id uuid [not null]
+  advice_date date [not null, note: 'Dag waarvoor het advies geldt']
+  rank smallint [not null, note: '1 tot en met 3 (top 3)']
+  appliance_category appliance_category [not null]
+  suggested_start timestamptz [not null]
+  suggested_end timestamptz [not null]
+  impact impact_class [not null]
+  expected_shared_kwh numeric(10,3) [not null]
+  acceptance_probability numeric(4,3) [note: 'Kans dat het advies wordt opgevolgd, uit het acceptatiemodel']
+  feedback advice_feedback [note: 'Leeg zolang de deelnemer niet heeft gereageerd']
+  measured_effect_kwh numeric(10,3) [note: 'Gemeten effect: werkelijk verbruik tegenover de P50-voorspelling']
+
+  indexes {
+    (participant_id, advice_date, rank) [unique]
+  }
+
+  Note: 'Top 3 advies per deelnemer per dag, inclusief feedback en gemeten effect'
+}
+
+// ───────────── Relaties ─────────────
+
+Ref: users.participant_id > participants.id [delete: set null]
+Ref: participant_appliances.participant_id > participants.id [delete: cascade]
+Ref: meters.participant_id > participants.id [delete: set null]
+Ref: readings.meter_reference > meters.meter_reference [delete: restrict]
+Ref: simultaneity.participant_id > participants.id [delete: cascade]
+Ref: forecasts.participant_id > participants.id [delete: cascade]
+Ref: advice.participant_id > participants.id [delete: cascade]
+
+// ───────────── Groepen ─────────────
+
+TableGroup accounts {
+  participants
+  users
+  participant_appliances
+  settings
+}
+
+TableGroup meter_data {
+  import_log
+  meters
+  readings
+}
+
+TableGroup results {
+  simultaneity
+  forecasts
+  energy_prices
+  advice
+}
