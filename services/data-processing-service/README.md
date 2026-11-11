@@ -10,6 +10,7 @@ Stappen per import:
 4. `validator.py`: dubbelen, gaten (niet als 0) en grenzen per meter;
 5. `meter_linker.py`: meter-id naar deelnemer via de koppeltabel;
 6. `simultaneity_calculator.py`: gedeeld = min(teruglevering, afname) per kwartier, naar rato verdeeld;
-7. `training_notifier.py`: start de training pipeline.
+7. `training_notifier.py`: start de training pipeline
+
 
 De import is idempotent: exports mogen elkaar overlappen.
