@@ -11,6 +11,12 @@ from data_processing_service.__main__ import main
 from data_processing_service.backend_client import DryRunBackendClient
 from data_processing_service.import_orchestrator import run_import
 
+FIXTURES = Path(__file__).parent / "fixtures"
+
+
+def read(name: str) -> bytes:
+    return (FIXTURES / name).read_bytes()
+
 REPO_DATA = Path(__file__).resolve().parents[3] / "data" / "meterdata.csv"
 
 
@@ -20,9 +26,9 @@ def dryrun(tmp_path, monkeypatch):
     return tmp_path
 
 
-def test_import_schrijft_verzoeken_zoals_backend_api(fixture_bytes, dryrun):
+def test_import_schrijft_verzoeken_zoals_backend_api(dryrun):
     backend = DryRunBackendClient(dryrun)
-    report = run_import(fixture_bytes("testset_wintertijd_2026.csv"), "test.csv", backend)
+    report = run_import(read("testset_wintertijd_2026.csv"), "test.csv", backend)
     assert report.status == "succeeded"
     assert report.rows_accepted == 476 and report.new_meters == ["GV90", "KV90", "KV91"]
 
@@ -35,45 +41,45 @@ def test_import_schrijft_verzoeken_zoals_backend_api(fixture_bytes, dryrun):
     assert patch["status"] == "succeeded" and patch["row_count"] == 476
 
 
-def test_zelfde_bestand_twee_keer_is_duplicate(fixture_bytes, dryrun):
+def test_zelfde_bestand_twee_keer_is_duplicate(dryrun):
     backend = DryRunBackendClient(dryrun)
-    first = run_import(fixture_bytes("geldig_klein.csv"), "a.csv", backend)
-    second = run_import(fixture_bytes("geldig_klein.csv"), "a.csv", DryRunBackendClient(dryrun))
+    first = run_import(read("dst_maart.csv"), "a.csv", backend)
+    second = run_import(read("dst_maart.csv"), "a.csv", DryRunBackendClient(dryrun))
     assert second.status == "duplicate" and second.import_id == first.import_id
 
 
-def test_bekende_meters_zijn_niet_nieuw(fixture_bytes, dryrun):
-    run_import(fixture_bytes("geldig_klein.csv"), "a.csv", DryRunBackendClient(dryrun))
-    report = run_import(fixture_bytes("dst_maart.csv"), "b.csv", DryRunBackendClient(dryrun))
+def test_bekende_meters_zijn_niet_nieuw(dryrun):
+    run_import(read("dst_maart.csv"), "a.csv", DryRunBackendClient(dryrun))
+    report = run_import(read("dst_oktober.csv"), "b.csv", DryRunBackendClient(dryrun))
     assert report.new_meters == []
 
 
-def test_grote_import_in_batches(dryrun, monkeypatch, fixture_bytes):
+def test_grote_import_in_batches(dryrun, monkeypatch):
     monkeypatch.setattr(config, "MAX_BATCH", 100)
     backend = DryRunBackendClient(dryrun)
-    report = run_import(fixture_bytes("testset_wintertijd_2026.csv"), "t.csv", backend)
+    report = run_import(read("testset_wintertijd_2026.csv"), "t.csv", backend)
     batches = sorted(backend.import_dir(report.import_id).glob("03_put_readings_*.json"))
     assert len(batches) == 5
 
 
-def test_fataal_formaat_markeert_import_als_mislukt(fixture_bytes, dryrun):
+def test_fataal_formaat_markeert_import_als_mislukt(dryrun):
     backend = DryRunBackendClient(dryrun)
-    report = run_import(fixture_bytes("ontbrekende_kolom.csv"), "x.csv", backend)
+    report = run_import(b"meter_reference,interval_start\nKV01,2026-06-01\n", "x.csv", backend)
     assert report.status == "failed" and "from_grid_kWh" in report.error_message
     patch = json.loads((backend.import_dir(report.import_id) / "99_patch_imports.json").read_text())
     assert patch["status"] == "failed"
 
 
-def test_alleen_valideren_schrijft_niets(fixture_bytes, dryrun):
-    report = run_import(fixture_bytes("fouten.csv"), "f.csv", backend=None)
+def test_alleen_valideren_schrijft_niets(dryrun):
+    report = run_import(read("fouten.csv"), "f.csv", backend=None)
     assert report.status == "validated" and report.rows_rejected == 6
     assert not any(dryrun.iterdir())
 
 
-def test_endpoint_upload_en_status(fixture_bytes, dryrun):
+def test_endpoint_upload_en_status(dryrun):
     from data_processing_service.import_endpoint import app
     client = TestClient(app)
-    files = {"file": ("testset.csv", fixture_bytes("testset_wintertijd_2026.csv"), "text/csv")}
+    files = {"file": ("testset.csv", read("testset_wintertijd_2026.csv"), "text/csv")}
 
     response = client.post("/imports", files=files)
     assert response.status_code == 202
@@ -85,18 +91,18 @@ def test_endpoint_upload_en_status(fixture_bytes, dryrun):
     assert client.post("/imports", files=files).status_code == 409
 
 
-def test_endpoint_validate_only_en_fouten(fixture_bytes, dryrun):
+def test_endpoint_validate_only_en_fouten(dryrun):
     from data_processing_service.import_endpoint import app
     client = TestClient(app)
     ok = client.post("/imports?validate_only=true",
-                     files={"file": ("f.csv", fixture_bytes("fouten.csv"), "text/csv")})
+                     files={"file": ("f.csv", read("fouten.csv"), "text/csv")})
     assert ok.status_code == 200 and ok.json()["rows_rejected"] == 6
     assert client.post("/imports", files={"file": ("f.txt", b"x", "text/plain")}).status_code == 415
     assert client.get("/imports/bestaat-niet").status_code == 404
 
 
-def test_cli(fixture_bytes, dryrun, capsys):
-    path = Path(__file__).parent / "fixtures" / "gaps.csv"
+def test_cli(dryrun, capsys):
+    path = FIXTURES / "gaps.csv"
     assert main([str(path)]) == 0
     assert "Gaps        1 (2 kwartieren)" in capsys.readouterr().out
     assert main([str(path)]) == 2  # tweede keer: duplicate

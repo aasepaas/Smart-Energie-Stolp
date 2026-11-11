@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools>=69"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "data-processing-service"
@@ -20,8 +20,9 @@ dev = ["pytest>=8", "httpx>=0.27"]
 [project.scripts]
 ses-import = "data_processing_service.__main__:main"
 
-[tool.setuptools.packages.find]
-where = ["src"]
+# hatchling maakt bij pip install -e geen .egg-info-map aan in src/
+[tool.hatch.build.targets.wheel]
+packages = ["src/data_processing_service"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
