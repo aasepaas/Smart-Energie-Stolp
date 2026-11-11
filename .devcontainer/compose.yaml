@@ -23,6 +23,11 @@ services:
       SES_PASSWORD_FRONTEND: user
       SES_PASSWORD_BACKEND: user
       SES_PASSWORD_BACKUP: user
+      # Service tokens voor de Backend API (alleen lokaal)
+      BACKEND_API_URL: http://backend-api:8001/v1
+      SES_TOKEN_PROCESSING: dev-processing
+      SES_TOKEN_TRAINING: dev-training
+      SES_TOKEN_FORECAST: dev-forecast
     depends_on:
       db:
         condition: service_healthy
@@ -47,6 +52,25 @@ services:
       timeout: 5s
       retries: 10
 
+  backend-api:
+    build:
+      context: ../services/backend-api
+    restart: unless-stopped
+    # --reload: bij elke wijziging in src/ start de API opnieuw
+    command: uvicorn backend_api.main:app --host 0.0.0.0 --port 8001 --reload --reload-dir /app/src
+    volumes:
+      - ../services/backend-api/src:/app/src
+    environment:
+      BACKEND_DATABASE_URL: postgresql://ses_backend:user@db:5432/ses
+      SES_TOKEN_PROCESSING: dev-processing
+      SES_TOKEN_TRAINING: dev-training
+      SES_TOKEN_FORECAST: dev-forecast
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8001:8001"
+  
   mlflow:
     image: ghcr.io/mlflow/mlflow:v3.16.1
     restart: unless-stopped
