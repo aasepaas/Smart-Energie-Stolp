@@ -1,8 +1,9 @@
-"""Controleert of een import echt goed in de database terechtkomt.
+"""Checks that an import really ends up correctly in the database.
 
-Draait tegen de echte Backend API en database in de dev-container en wordt anders
-overgeslagen. Elke test importeert een bestand uit fixtures/ en kijkt daarna met SQL in
-import_log, meters en readings. Testdata wordt voor en na elke test opgeruimd.
+Runs against the real Backend API and database in the dev container and is skipped
+otherwise. Each test imports a file from fixtures/ and then checks import_log, meters,
+readings and community_simultaneity with SQL. Test data is cleaned up before and after each
+test.
 """
 
 import os
@@ -47,6 +48,8 @@ def db():
 
     with psycopg.connect(os.environ["DATABASE_URL"], autocommit=True, row_factory=dict_row) as conn:
         def opruimen():
+            conn.execute("DELETE FROM community_simultaneity WHERE ts IN "
+                         "(SELECT ts FROM readings WHERE meter_reference = ANY(%s))", [TEST_METERS])
             conn.execute("DELETE FROM readings WHERE meter_reference = ANY(%s)", [TEST_METERS])
             conn.execute("DELETE FROM meters WHERE meter_reference = ANY(%s)", [TEST_METERS])
             conn.execute("DELETE FROM import_log WHERE file_name LIKE %s", [PREFIX + "%"])
@@ -161,3 +164,56 @@ def test_mislukte_import_in_import_log(db):
     (row,) = import_log(db, "kapot.csv")
     assert row["status"] == "failed" and "from_grid_kWh" in row["error_message"]
     assert db.execute("SELECT count(*) AS n FROM readings WHERE meter_reference = 'KV90'").fetchone()["n"] == 0
+
+
+# Independent check in SQL: the same rule, directly on readings.
+EXPECTED = """
+    SELECT ts, sum(to_grid_kwh) AS total_to_grid_kwh, sum(from_grid_kwh) AS total_from_grid_kwh,
+           LEAST(sum(to_grid_kwh), sum(from_grid_kwh)) AS shared_kwh,
+           count(DISTINCT meter_reference) AS meter_count
+    FROM readings WHERE meter_reference = ANY(%s) GROUP BY ts ORDER BY ts
+"""
+STORED = """
+    SELECT ts, total_to_grid_kwh, total_from_grid_kwh, shared_kwh, meter_count
+    FROM community_simultaneity
+    WHERE ts IN (SELECT ts FROM readings WHERE meter_reference = ANY(%s)) ORDER BY ts
+"""
+
+
+def test_simultaneity_after_import(db):
+    report = importeer("testset_wintertijd_2026.csv")
+    assert report.status == "succeeded" and report.simultaneity_quarters == 192
+    expected = db.execute(EXPECTED, [TEST_METERS]).fetchall()
+    assert len(expected) == 192 and db.execute(STORED, [TEST_METERS]).fetchall() == expected
+
+
+def test_simultaneity_after_overlapping_imports(db):
+    importeer("dst_oktober.csv")
+    importeer("testset_wintertijd_2026.csv")  # overlaps and overwrites values
+    assert db.execute(STORED, [TEST_METERS]).fetchall() == \
+        db.execute(EXPECTED, [TEST_METERS]).fetchall()
+
+
+def test_gap_does_not_count_as_zero_in_simultaneity(db):
+    importeer("testset_wintertijd_2026.csv")  # KV91 misses 24 Oct 14:30-15:30, KV90 does not
+    rows = db.execute("SELECT ts, meter_count FROM community_simultaneity "
+                      "WHERE ts >= %s AND ts < %s ORDER BY ts",
+                      [utc("2026-10-24 14:00"), utc("2026-10-24 16:00")]).fetchall()
+    assert [r["meter_count"] for r in rows] == [2, 2, 1, 1, 1, 1, 2, 2]
+
+
+def test_simultaneity_with_generation_by_hand(db):
+    # 10:00 GV90 feeds in 1.2, KV90 and KV91 consume 0.5 + 0.3 -> shared 0.8
+    # 10:15 KV90 feeds in 0.25 and consumes 0.05, KV91 consumes 1.0 -> shared 0.25 (no netting)
+    lines = [("GV90", "10:00", "1,2", "0,0"), ("KV90", "10:00", "0,0", "0,5"),
+              ("KV91", "10:00", "0,0", "0,3"), ("KV90", "10:15", "0,25", "0,05"),
+              ("KV91", "10:15", "0,0", "1,0")]
+    content = ("meter_reference,interval_start,interval_time,nl_weekday,nl_date,nl_time,"
+               "to_grid_kWh,from_grid_kWh,created_date,created_time\n" + "".join(
+                   f'{m},2026-06-01,{t}:00+00,1,2026-06-01,{int(t[:2]) + 2}{t[2:]}:00,'
+                   f'"{to}","{fr}",2026-06-02,06:00:00+00\n' for m, t, to, fr in lines)).encode()
+    assert importeer("generation.csv", content).status == "succeeded"
+    rows = db.execute(STORED, [TEST_METERS]).fetchall()
+    assert [(r["total_to_grid_kwh"], r["total_from_grid_kwh"], r["shared_kwh"], r["meter_count"])
+            for r in rows] == [(Decimal("1.200"), Decimal("0.800"), Decimal("0.800"), 3),
+                               (Decimal("0.250"), Decimal("1.050"), Decimal("0.250"), 2)]

@@ -8,6 +8,8 @@ database komt, test test_database.py.
 import hashlib
 import json
 import uuid
+from datetime import datetime
+from decimal import Decimal
 from pathlib import Path
 
 import httpx
@@ -35,8 +37,10 @@ class FakeBackendAPI:
         self.meters: set[str] = set()
         self.imports: dict[str, dict] = {}   # id -> import_log-rij
         self.readings: dict[tuple, dict] = {}
+        self.simultaneity: dict[datetime, dict] = {}
         self.calls: list[str] = []
         self.fail_readings = False
+        self.fail_simultaneity = False
 
     def handler(self, request: httpx.Request) -> httpx.Response:
         if request.headers.get("Authorization") != f"Bearer {TOKEN}":
@@ -62,6 +66,27 @@ class FakeBackendAPI:
             for r in body:
                 self.readings[(r["meter_reference"], r["ts"])] = r
             return httpx.Response(200, json={"count": len(body)})
+        if request.method == "GET" and path == "/readings":
+            start, end = (datetime.fromisoformat(request.url.params[k]) for k in ("start", "end"))
+            rows = [r for r in self.readings.values()
+                    if start <= datetime.fromisoformat(r["ts"]) < end]
+            return httpx.Response(200, json=sorted(rows, key=lambda r: (r["ts"], r["meter_reference"])))
+        if request.method == "PUT" and path == "/simultaneity":
+            if self.fail_simultaneity:
+                return httpx.Response(500, text="Internal Server Error")
+            start, end = (datetime.fromisoformat(body[k]) for k in ("start", "end"))
+            rows = body["rows"]
+            if not 1 <= len(rows) <= config.MAX_BATCH:
+                return httpx.Response(422, json={"detail": "1 to MAX_BATCH rows"})
+            if any(not start <= datetime.fromisoformat(r["ts"]) < end for r in rows):
+                return httpx.Response(422, json={"detail": "All rows must fall within [start, end)"})
+            if any(Decimal(r["shared_kwh"]) != min(Decimal(r["total_to_grid_kwh"]),
+                                                   Decimal(r["total_from_grid_kwh"])) for r in rows):
+                return httpx.Response(500, json={"detail": "community_simultaneity_shared_check"})
+            self.simultaneity = {ts: r for ts, r in self.simultaneity.items()
+                                 if not start <= ts < end}
+            self.simultaneity.update({datetime.fromisoformat(r["ts"]): r for r in rows})
+            return httpx.Response(200, json={"count": len(rows)})
         if request.method == "POST" and path == "/imports":
             if any(i["file_hash"] == body["file_hash"] for i in self.imports.values()):
                 return httpx.Response(409, json={"detail": "Already exists"})
@@ -97,7 +122,8 @@ def test_import_schrijft_naar_backend_api(api):
     assert report.status == "succeeded"
     assert report.rows_accepted == 476 and report.new_meters == ["GV90", "KV90", "KV91"]
     assert api.calls == ["POST /imports", "GET /meters", "POST /meters", "PUT /readings",
-                         f"PATCH /imports/{report.import_id}"]
+                         f"PATCH /imports/{report.import_id}",
+                         "GET /readings", "PUT /simultaneity"]
     assert api.readings[("KV90", "2026-10-24T00:00:00+00:00")] == {
         "meter_reference": "KV90", "ts": "2026-10-24T00:00:00+00:00",
         "to_grid_kwh": "0.000", "from_grid_kwh": "0.050"}
@@ -198,3 +224,90 @@ def test_lokale_export_uit_data_map():
     report = run_import(REPO_DATA.read_bytes(), REPO_DATA.name, backend=None)
     assert report.status == "validated" and report.rows_rejected == 0
     assert not report.gaps
+
+
+# ---------- Simultaneity after the import ----------
+
+HEADER = ("meter_reference,interval_start,interval_time,nl_weekday,nl_date,nl_time,"
+          "to_grid_kWh,from_grid_kWh,created_date,created_time\n")
+
+
+def csv(*rows: tuple[str, str, str, str], created: str = "06:00:00+00") -> bytes:
+    """Small CSV: (meter, UTC time on 1 June 2026, to_grid, from_grid) with decimal commas."""
+    lines = [f'{m},2026-06-01,{t}:00+00,1,2026-06-01,{int(t[:2]) + 2:02}{t[2:]}:00,'
+             f'"{to}","{fr}",2026-06-02,{created}' for m, t, to, fr in rows]
+    return (HEADER + "\n".join(lines) + "\n").encode()
+
+
+def shared(api) -> dict[str, str]:
+    return {ts.strftime("%H:%M"): r["shared_kwh"] for ts, r in sorted(api.simultaneity.items())}
+
+
+def test_simultaneity_after_import(api):
+    # 10:00 KV90 feeds in 0.4, KV91 consumes 0.25 -> 0.25 | 10:15 only consumption -> 0
+    content = csv(("KV90", "10:00", "0,4", "0,0"), ("KV91", "10:00", "0,0", "0,25"),
+                  ("KV90", "10:15", "0,0", "0,1"), ("KV91", "10:15", "0,0", "0,2"))
+    report = run_import(content, "june.csv", api.client())
+    assert report.status == "succeeded" and report.simultaneity_quarters == 2
+    assert shared(api) == {"10:00": "0.250", "10:15": "0.000"}
+    row = api.simultaneity[datetime.fromisoformat("2026-06-01T10:00:00+00:00")]
+    assert row == {"ts": "2026-06-01T10:00:00+00:00", "total_to_grid_kwh": "0.400",
+                   "total_from_grid_kwh": "0.250", "shared_kwh": "0.250", "meter_count": 2}
+
+
+def test_next_import_recalculates_with_all_meters(api):
+    run_import(csv(("KV90", "10:00", "0,4", "0,0")), "a.csv", api.client())
+    assert shared(api) == {"10:00": "0.000"}  # nobody consumes yet
+    # second export with only KV91: the calculation includes KV90 from the database
+    report = run_import(csv(("KV91", "10:00", "0,0", "0,3")), "b.csv", api.client())
+    assert report.simultaneity_quarters == 1 and shared(api) == {"10:00": "0.300"}
+    # a corrected value in an overlapping export replaces the old result
+    run_import(csv(("KV91", "10:00", "0,0", "0,1"), created="07:00:00+00"), "c.csv", api.client())
+    assert shared(api) == {"10:00": "0.100"}
+
+
+def test_gap_gives_no_zero_row(api):
+    # gaps.csv misses two quarters: they get no row in community_simultaneity
+    report = run_import(read("gaps.csv"), "gaps.csv", api.client())
+    quarters = {r["ts"] for r in api.readings.values()}
+    assert report.simultaneity_quarters == len(quarters) == len(api.simultaneity)
+
+
+def test_recalculate_in_chunks(api, monkeypatch):
+    monkeypatch.setattr(config, "SIMULTANEITY_CHUNK_DAYS", 1)
+    report = run_import(read("testset_wintertijd_2026.csv"), "t.csv", api.client())
+    assert api.calls.count("PUT /simultaneity") == 2  # 24 and 25 October
+    assert report.simultaneity_quarters == len({r["ts"] for r in api.readings.values()}) == 192
+
+
+def test_failed_recalculation_is_warning(api):
+    api.fail_simultaneity = True
+    report = run_import(csv(("KV90", "10:00", "0,4", "0,0")), "a.csv", api.client())
+    assert report.status == "succeeded" and only_import(api)["status"] == "succeeded"
+    (issue,) = [i for i in report.issues if i.code.value == "simultaneity_failed"]
+    assert issue.severity.value == "warning" and "--recalculate" in issue.message
+
+
+def test_validate_only_calculates_nothing(api):
+    run_import(csv(("KV90", "10:00", "0,4", "0,0")), "a.csv", backend=None)
+    assert api.calls == [] and api.simultaneity == {}
+
+
+def test_cli_recalculate(api, capsys):
+    run_import(csv(("KV90", "10:00", "0,4", "0,0"), ("KV91", "10:00", "0,0", "0,25")),
+               "a.csv", api.client())
+    api.simultaneity.clear()
+    assert main(["--recalculate", "2026-06-01", "2026-06-02"]) == 0
+    assert "1 quarters recalculated" in capsys.readouterr().out
+    assert shared(api) == {"10:00": "0.250"}
+    api.fail_simultaneity = True
+    assert main(["--recalculate", "2026-06-01", "2026-06-02"]) == 1
+
+
+def test_cli_recalculate_invalid_period(api):
+    with pytest.raises(SystemExit):
+        main(["--recalculate", "2026-06-02", "2026-06-01"])
+    with pytest.raises(SystemExit):
+        main(["--recalculate", "june", "july"])
+    with pytest.raises(SystemExit):
+        main([])
