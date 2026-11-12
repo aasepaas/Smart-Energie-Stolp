@@ -2,7 +2,7 @@
   "name": "Smart Energie Stolp",
   "dockerComposeFile": "compose.yaml",
   "service": "dev",
-  "runServices": ["dev", "db", "mlflow"],
+  "runServices": ["dev", "db", "mlflow", "backend-api"],
   "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
   "shutdownAction": "stopCompose",
   "features": {
