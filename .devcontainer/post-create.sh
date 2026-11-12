@@ -14,7 +14,7 @@ fi
 
 for service in services/*/; do
   if [ -f "${service}pyproject.toml" ]; then
-    pip install -e "${service}"
+    pip install -e "${service}[dev]"
   fi
 done
 
