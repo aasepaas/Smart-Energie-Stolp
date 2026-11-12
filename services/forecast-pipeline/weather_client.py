@@ -3,6 +3,8 @@
 Includes the solar variables needed to forecast what solar panels generate.
 The variables and the time alignment should be the same as in the meter readings, 
 so they can be compared/easily be used for the machine learning model.
+To get the weather forecasts from Benthuizen for the next 48 hours, you only have to call the
+get_weather() function, this will return the values in json.
 """
 
 import json
