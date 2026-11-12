@@ -1,0 +1,22 @@
+participant,meter_reference,valid_from,valid_to,connection,pv_kwp,ev,heat_pump,description
+P01,KV01,2026-03-15T23:00:00+00:00,2026-04-12T22:00:00+00:00,KV,4.5,false,false,"family, south roof"
+P02,KV02,2026-03-15T23:00:00+00:00,2026-04-12T22:00:00+00:00,KV,6,true,true,"family, EV and heat pump"
+P03,KV03,2026-03-15T23:00:00+00:00,2026-04-12T22:00:00+00:00,KV,0,false,false,"couple, no panels"
+P04,KV04,2026-03-15T23:00:00+00:00,2026-04-12T22:00:00+00:00,KV,3.2,false,false,"couple, east roof"
+P05,KV05,2026-03-15T23:00:00+00:00,2026-04-12T22:00:00+00:00,KV,0,false,true,"family, heat pump"
+P06,KV06,2026-03-15T23:00:00+00:00,2026-04-12T22:00:00+00:00,KV,5,true,false,"family, west roof, EV"
+P07,KV07,2026-03-15T23:00:00+00:00,2026-03-31T22:00:00+00:00,KV,3.6,false,false,"couple, new meter"
+P07,KV21,2026-03-31T22:00:00+00:00,2026-04-12T22:00:00+00:00,KV,3.6,false,false,"couple, new meter"
+P08,KV08,2026-03-15T23:00:00+00:00,2026-04-12T22:00:00+00:00,KV,0,false,false,"single, no panels"
+P09,KV09,2026-03-15T23:00:00+00:00,2026-04-12T22:00:00+00:00,KV,7.2,false,true,"family, large roof"
+P10,KV10,2026-03-15T23:00:00+00:00,2026-04-12T22:00:00+00:00,KV,0,true,false,"family, EV, no panels"
+P11,KV11,2026-03-15T23:00:00+00:00,2026-04-12T22:00:00+00:00,KV,2.8,false,false,"single, small roof"
+P12,KV12,2026-03-15T23:00:00+00:00,2026-04-12T22:00:00+00:00,KV,0,false,false,"couple, no panels"
+P13,KV13,2026-03-15T23:00:00+00:00,2026-04-12T22:00:00+00:00,KV,4,false,true,"family, heat pump"
+P14,KV14,2026-03-15T23:00:00+00:00,2026-04-12T22:00:00+00:00,KV,0,false,false,elderly couple
+P15,KV15,2026-03-15T23:00:00+00:00,2026-04-12T22:00:00+00:00,KV,5.4,true,true,"family, all electric"
+P16,KV16,2026-03-15T23:00:00+00:00,2026-04-12T22:00:00+00:00,KV,0,false,false,"couple, no panels"
+P17,KV17,2026-03-15T23:00:00+00:00,2026-04-12T22:00:00+00:00,KV,3,false,false,"couple, west roof"
+P18,KV18,2026-03-29T22:00:00+00:00,2026-04-12T22:00:00+00:00,KV,0,false,true,"family, joins later"
+P19,KV19,2026-03-15T23:00:00+00:00,2026-04-12T22:00:00+00:00,KV,0,true,false,"home worker, EV"
+P20,GV01,2026-03-15T23:00:00+00:00,2026-04-12T22:00:00+00:00,GV,15,false,true,sports club
