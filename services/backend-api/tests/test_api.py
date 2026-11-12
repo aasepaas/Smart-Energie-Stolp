@@ -304,3 +304,44 @@ def test_validatie_422(setup):
         ).status_code
         == 422
     )
+
+
+def test_transaction_commits_before_response():
+    """Every endpoint with a cursor must commit before the response is sent.
+
+    With the default scope="request" FastAPI commits after sending the response, so a request
+    that follows immediately (PATCH after POST, GET after PUT) may not see the new data yet.
+    TestClient waits for the commit, so the race only shows against a running server; this
+    test therefore checks the scope of every endpoint.
+    """
+    from backend_api.db import get_cursor
+    from backend_api.routers import meterdata, reference, results
+
+    scopes = {
+        f"{', '.join(route.methods)} {route.path}": dependency.scope
+        for router in (meterdata.router, reference.router, results.router)
+        for route in router.routes
+        for dependency in route.dependant.dependencies
+        if dependency.call is get_cursor
+    }
+    assert len(scopes) == 18
+    assert {path: scope for path, scope in scopes.items() if scope != "function"} == {}
+
+
+def test_real_meter_reference_format_accepted(setup):
+    """Real exports use meter_ + 24 hex (30 characters); the database allows varchar(64)."""
+    c = setup["client"]
+    meter = "meter_" + uuid.uuid4().hex[:24]
+    try:
+        added = c.post("/v1/meters", headers=h("processing"), json={"meter_references": [meter]})
+        assert added.status_code == 200 and added.json() == {"count": 1}
+        reading = {"meter_reference": meter, "ts": TS, "to_grid_kwh": "0.100",
+                   "from_grid_kwh": "0.000"}
+        assert c.put("/v1/readings", headers=h("processing"), json=[reading]).status_code == 200
+        too_long = c.post("/v1/meters", headers=h("processing"),
+                          json={"meter_references": ["m" * 65]})
+        assert too_long.status_code == 422
+    finally:
+        with psycopg.connect(ADMIN_URL, autocommit=True) as conn:
+            conn.execute("DELETE FROM readings WHERE meter_reference = %s", [meter])
+            conn.execute("DELETE FROM meters WHERE meter_reference = %s", [meter])

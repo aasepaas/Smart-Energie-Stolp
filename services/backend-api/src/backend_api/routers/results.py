@@ -18,7 +18,7 @@ router = APIRouter(tags=["results"])
 
 @router.get("/simultaneity", response_model=list[SimultaneityRow],
             dependencies=[allow("processing", "training", "forecast")])
-def list_simultaneity(start: AwareDatetime, end: AwareDatetime, cur=Depends(get_cursor)):
+def list_simultaneity(start: AwareDatetime, end: AwareDatetime, cur=Depends(get_cursor, scope="function")):
     """Simultaneity of the whole community per quarter hour in [start, end)."""
     cur.execute(
         "SELECT ts, total_to_grid_kwh, total_from_grid_kwh, shared_kwh, meter_count "
@@ -29,7 +29,7 @@ def list_simultaneity(start: AwareDatetime, end: AwareDatetime, cur=Depends(get_
 
 
 @router.put("/simultaneity", response_model=Count, dependencies=[allow("processing")])
-def replace_simultaneity(body: SimultaneityPeriod, cur=Depends(get_cursor)):
+def replace_simultaneity(body: SimultaneityPeriod, cur=Depends(get_cursor, scope="function")):
     """Recalculation of a period: existing rows in [start, end) are replaced."""
     if any(not (body.start <= r.ts < body.end) for r in body.rows):
         raise HTTPException(422, "All rows must fall within [start, end)")
@@ -50,7 +50,7 @@ def replace_simultaneity(body: SimultaneityPeriod, cur=Depends(get_cursor)):
 @router.get("/forecasts", response_model=list[Forecast],
             dependencies=[allow("training", "forecast")])
 def list_forecasts(start: AwareDatetime, end: AwareDatetime,
-                   run_date: date | None = None, cur=Depends(get_cursor)):
+                   run_date: date | None = None, cur=Depends(get_cursor, scope="function")):
     """Forecasts in [start, end), optionally only those made on a specific evening (run_date)."""
     query = "SELECT * FROM forecasts WHERE ts >= %s AND ts < %s"
     params = [start, end]
@@ -63,7 +63,7 @@ def list_forecasts(start: AwareDatetime, end: AwareDatetime,
 
 @router.post("/forecasts", response_model=Count, status_code=201,
              dependencies=[allow("forecast")])
-def add_forecasts(rows: batch(Forecast), cur=Depends(get_cursor)):
+def add_forecasts(rows: batch(Forecast), cur=Depends(get_cursor, scope="function")):
     """Adds forecasts. A forecast that already exists (same participant, quarter hour
     and evening) is skipped: the first run of an evening is kept."""
     cur.executemany(
@@ -80,7 +80,7 @@ def add_forecasts(rows: batch(Forecast), cur=Depends(get_cursor)):
 
 @router.get("/energy-prices", response_model=list[EnergyPrice],
             dependencies=[allow("forecast")])
-def list_prices(start: AwareDatetime, end: AwareDatetime, cur=Depends(get_cursor)):
+def list_prices(start: AwareDatetime, end: AwareDatetime, cur=Depends(get_cursor, scope="function")):
     """Dynamic day-ahead prices per quarter hour in [start, end)."""
     cur.execute("SELECT ts, price_eur_per_kwh FROM energy_prices "
                 "WHERE ts >= %s AND ts < %s ORDER BY ts", [start, end])
@@ -88,7 +88,7 @@ def list_prices(start: AwareDatetime, end: AwareDatetime, cur=Depends(get_cursor
 
 
 @router.put("/energy-prices", response_model=Count, dependencies=[allow("forecast")])
-def upsert_prices(rows: batch(EnergyPrice), cur=Depends(get_cursor)):
+def upsert_prices(rows: batch(EnergyPrice), cur=Depends(get_cursor, scope="function")):
     """Stores day-ahead prices; an existing price for the same quarter hour is overwritten."""
     cur.executemany(
         "INSERT INTO energy_prices (ts, price_eur_per_kwh) VALUES (%s, %s) "
@@ -102,7 +102,7 @@ def upsert_prices(rows: batch(EnergyPrice), cur=Depends(get_cursor)):
 
 @router.get("/advice", response_model=list[Advice],
             dependencies=[allow("training", "forecast")])
-def list_advice(start_date: date, end_date: date, cur=Depends(get_cursor)):
+def list_advice(start_date: date, end_date: date, cur=Depends(get_cursor, scope="function")):
     """Advice in [start_date, end_date], including feedback and measured effect."""
     cur.execute(
         "SELECT * FROM advice WHERE advice_date BETWEEN %s AND %s "
@@ -113,7 +113,7 @@ def list_advice(start_date: date, end_date: date, cur=Depends(get_cursor)):
 
 
 @router.put("/advice", response_model=Count, dependencies=[allow("forecast")])
-def replace_advice(body: AdviceDay, cur=Depends(get_cursor)):
+def replace_advice(body: AdviceDay, cur=Depends(get_cursor, scope="function")):
     """Stores the top 3 advice of a day (ranker).
 
     On a repeated evening run, existing advice is updated; feedback and measured
@@ -146,7 +146,7 @@ def replace_advice(body: AdviceDay, cur=Depends(get_cursor)):
 
 
 @router.patch("/advice/effects", response_model=Count, dependencies=[allow("training")])
-def record_effects(rows: batch(AdviceEffect), cur=Depends(get_cursor)):
+def record_effects(rows: batch(AdviceEffect), cur=Depends(get_cursor, scope="function")):
     """Effect measurement: stores the measured effect per advice."""
     updated = 0
     for r in rows:
