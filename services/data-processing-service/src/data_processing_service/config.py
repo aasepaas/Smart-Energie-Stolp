@@ -12,3 +12,7 @@ MAX_BATCH = 10_000
 
 # Seconden per verzoek naar de Backend API (een batch van 10.000 rijen kan even duren).
 BACKEND_TIMEOUT = 120
+
+# Recalculate simultaneity in chunks of one week: 7 x 96 = 672 quarters per
+# PUT /simultaneity (below MAX_BATCH) and a limited number of readings per GET /readings.
+SIMULTANEITY_CHUNK_DAYS = 7

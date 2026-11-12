@@ -1,14 +1,16 @@
 """Import orchestrator (component 'Import orchestrator' in C4 3.3).
 
-Voert de importstappen in volgorde uit:
-    registreren -> csv_parser -> validator -> meters toevoegen -> metingen upserten -> afronden
+Runs the import steps in order:
+    register -> csv_parser -> validator -> add meters -> upsert readings -> finish
+    -> recalculate simultaneity
 
-Nog niet in deze story (volgen later): meter_linker, simultaneity_calculator, training_notifier.
+Not in this story yet (follow later): meter_linker, training_notifier.
 """
 
 from __future__ import annotations
 
 import hashlib
+from datetime import datetime, timedelta
 from typing import Any
 
 import pandas as pd
@@ -16,7 +18,8 @@ import pandas as pd
 from . import config
 from .backend_client import BackendClient, BackendError, DuplicateImportError
 from .csv_parser import parse_csv
-from .models import CsvFormatError, ImportReport
+from .models import Code, CsvFormatError, ImportReport, Issue, Severity
+from .simultaneity_calculator import calculate
 from .validator import validate
 
 
@@ -75,7 +78,38 @@ def process_import(report: ImportReport, content: bytes, backend: BackendClient 
         report.status = "succeeded"
     except BackendError as exc:
         return _fail(report, backend, f"wegschrijven mislukt: {exc}")
+
+    # The readings are stored, so the import succeeded. If the recalculation fails, add a
+    # warning: importing the same file again is not possible (409); recover with
+    # python -m data_processing_service --recalculate START END.
+    if report.period_start is not None:
+        try:
+            report.simultaneity_quarters = recalculate_simultaneity(
+                backend, report.period_start, report.period_end)
+        except BackendError as exc:
+            report.issues.append(Issue(
+                Code.SIMULTANEITY_FAILED, Severity.WARNING,
+                f"simultaneity not recalculated: {exc}. Retry with --recalculate "
+                f"{report.period_start.isoformat()} {report.period_end.isoformat()}"))
     return report
+
+
+def recalculate_simultaneity(backend: BackendClient, start: datetime, end: datetime) -> int:
+    """Recalculate the simultaneity of [start, end) from all readings, one week at a time.
+
+    Each chunk replaces the existing rows in community_simultaneity, so running it again gives
+    the same result. A chunk without readings is skipped (PUT needs at least one row).
+    Returns the number of quarters written.
+    """
+    step = timedelta(days=config.SIMULTANEITY_CHUNK_DAYS)
+    written = 0
+    while start < end:
+        chunk_end = min(start + step, end)
+        rows = [q.to_payload() for q in calculate(backend.list_readings(start, chunk_end))]
+        if rows:
+            written += backend.replace_simultaneity(start, chunk_end, rows)
+        start = chunk_end
+    return written
 
 
 def run_import(content: bytes, file_name: str, backend: BackendClient | None,

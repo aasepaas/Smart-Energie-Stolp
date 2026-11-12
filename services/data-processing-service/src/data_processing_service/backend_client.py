@@ -7,6 +7,8 @@ Volgt de Backend API op main (services/backend-api, alles onder /v1):
     upsert_readings  PUT   /readings        [{meter_reference, ts, to_grid_kwh, from_grid_kwh}]
     start_import     POST  /imports         {file_name, file_hash, period_start, period_end}
     update_import    PATCH /imports/{id}    {status, period_start, period_end, row_count, ...}
+    list_readings    GET   /readings?start&end            all meters in [start, end)
+    replace_simultaneity  PUT /simultaneity  {start, end, rows}  replaces [start, end)
 
 Adres en token komen uit BACKEND_API_URL en SES_TOKEN_PROCESSING (gezet in compose.yaml).
 """
@@ -71,6 +73,15 @@ class BackendClient:
     def update_import(self, import_id: str, **fields: Any) -> None:
         body = {k: v.isoformat() if isinstance(v, datetime) else v for k, v in fields.items()}
         self._request("PATCH", f"/imports/{import_id}", json=body)
+
+    def list_readings(self, start: datetime, end: datetime) -> list[dict[str, Any]]:
+        params = {"start": start.isoformat(), "end": end.isoformat()}
+        return self._request("GET", "/readings", params=params)
+
+    def replace_simultaneity(self, start: datetime, end: datetime,
+                             rows: list[dict[str, Any]]) -> int:
+        body = {"start": start.isoformat(), "end": end.isoformat(), "rows": rows}
+        return self._request("PUT", "/simultaneity", json=body)["count"]
 
     def close(self) -> None:
         self._http.close()

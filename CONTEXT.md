@@ -176,7 +176,7 @@ Design: [`database/erd/ses-database.dbml`](database/erd/ses-database.dbml). Sche
 | Dev container (TimescaleDB, MLflow, Backend API) | Working |
 | Database schema, roles, RLS (migration `0001`) | Working |
 | Backend API | Working, endpoints listed in `services/backend-api/README.md` |
-| Data processing service | Import, parser and validator working; meter linker, simultaneity calculator and training notifier still to do |
+| Data processing service | Import, parser, validator and simultaneity calculator (recalculated after each import) working; meter linker and training notifier still to do |
 | Frontend API, Web app | Not started (README only) |
 | Training pipeline, Forecast pipeline | Not started (README only) |
 | `packages/ses-common` | Not started (README only) |

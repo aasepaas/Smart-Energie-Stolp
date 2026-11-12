@@ -32,6 +32,8 @@ class Code(str, Enum):
     DUPLICATE_CONFLICT = "duplicate_conflict"
     GAP = "gap"
     PARTIAL_PERIOD = "partial_period"
+    # simultaneity_calculator
+    SIMULTANEITY_FAILED = "simultaneity_failed"
 
 
 @dataclass
@@ -73,6 +75,7 @@ class ImportReport:
     new_meters: list[str] = field(default_factory=list)
     gaps: list[Gap] = field(default_factory=list)
     issues: list[Issue] = field(default_factory=list)
+    simultaneity_quarters: int = 0      # recalculated quarters in community_simultaneity
     error_message: str | None = None
 
     def summary(self) -> dict[str, int]:
