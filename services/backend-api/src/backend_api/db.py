@@ -18,6 +18,12 @@ pool = ConnectionPool(DATABASE_URL, min_size=1, max_size=10, open=False)
 
 
 def get_cursor(service: Service = Depends(current_service)):
+    """Cursor in one transaction per request.
+
+    Always use Depends(get_cursor, scope="function"): the transaction then commits before the
+    response is sent. With the default (scope="request") FastAPI commits afterwards, so a request
+    that follows immediately (PATCH after POST, GET after PUT) may not see the new data yet.
+    """
     with pool.connection() as conn:
         with conn.transaction():
             with conn.cursor(row_factory=dict_row) as cur:

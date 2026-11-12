@@ -19,6 +19,8 @@ Elk verzoek wordt twee keer gecontroleerd:
 
 Elk verzoek is één transactie: lukt alles, dan wordt het vastgelegd; gaat er iets mis, dan wordt alles teruggedraaid.
 
+The transaction commits before the response is sent, so a service can read its own writes in the next request. Every endpoint therefore uses `Depends(get_cursor, scope="function")` (FastAPI 0.121 or newer); `test_transaction_commits_before_response` checks this.
+
 ## Endpoints
 
 Alle endpoints staan onder `/v1`. De interactieve documentatie staat op `/docs`.
@@ -45,7 +47,7 @@ Alle endpoints staan onder `/v1`. De interactieve documentatie staat op `/docs`.
 | GET | `/settings` | ✓ | ✓ | ✓ | Systeeminstellingen |
 | GET | `/health` | – | – | – | Controle voor Docker, zonder token |
 
-Schrijfverzoeken accepteren maximaal 10.000 rijen; stuur grotere imports in delen. Alle tijden moeten een tijdzone hebben (bijvoorbeeld `2026-06-01T12:00:00+00:00`), anders `422`.
+Schrijfverzoeken accepteren maximaal 10.000 rijen; stuur grotere imports in delen. A `meter_reference` can be up to 64 characters (`KV01`, `GV03` or `meter_` + 24 hex), like the database. Alle tijden moeten een tijdzone hebben (bijvoorbeeld `2026-06-01T12:00:00+00:00`), anders `422`.
 
 ## Starten
 

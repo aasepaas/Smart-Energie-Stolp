@@ -27,13 +27,13 @@ class Meter(BaseModel):
 
 class NewMeters(BaseModel):
     meter_references: Annotated[
-        list[Annotated[str, Field(max_length=20)]],
+        list[Annotated[str, Field(max_length=64)]],
         Field(min_length=1, max_length=MAX_BATCH),
     ]
 
 
 class Reading(BaseModel):
-    meter_reference: Annotated[str, Field(max_length=20)]
+    meter_reference: Annotated[str, Field(max_length=64)]
     ts: AwareDatetime
     to_grid_kwh: Kwh
     from_grid_kwh: Kwh
