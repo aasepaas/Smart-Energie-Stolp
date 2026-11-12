@@ -15,14 +15,14 @@ router = APIRouter(tags=["meterdata"])
 
 @router.get("/meters", response_model=list[Meter],
             dependencies=[allow("processing", "training", "forecast")])
-def list_meters(cur=Depends(get_cursor)):
+def list_meters(cur=Depends(get_cursor, scope="function")):
     """All meters with the participant they are linked to (meter linker)."""
     cur.execute("SELECT meter_reference, participant_id FROM meters ORDER BY meter_reference")
     return cur.fetchall()
 
 
 @router.post("/meters", response_model=Count, dependencies=[allow("processing")])
-def add_meters(body: NewMeters, cur=Depends(get_cursor)):
+def add_meters(body: NewMeters, cur=Depends(get_cursor, scope="function")):
     """Adds new meters; meters that already exist are skipped."""
     cur.executemany(
         "INSERT INTO meters (meter_reference) VALUES (%s) ON CONFLICT DO NOTHING",
@@ -37,7 +37,7 @@ def list_readings(
     start: AwareDatetime,
     end: AwareDatetime,
     meter_reference: list[str] | None = Query(None),
-    cur=Depends(get_cursor),
+    cur=Depends(get_cursor, scope="function"),
 ):
     """Readings in [start, end), optionally for specific meters only."""
     query = ("SELECT meter_reference, ts, to_grid_kwh, from_grid_kwh FROM readings "
@@ -51,7 +51,7 @@ def list_readings(
 
 
 @router.put("/readings", response_model=Count, dependencies=[allow("processing")])
-def upsert_readings(rows: batch(Reading), cur=Depends(get_cursor)):
+def upsert_readings(rows: batch(Reading), cur=Depends(get_cursor, scope="function")):
     """Stores readings. Importing again overwrites existing values and creates no duplicates."""
     cur.executemany(
         "INSERT INTO readings (meter_reference, ts, to_grid_kwh, from_grid_kwh) "
@@ -65,7 +65,7 @@ def upsert_readings(rows: batch(Reading), cur=Depends(get_cursor)):
 
 @router.post("/imports", response_model=ImportRecord, status_code=201,
              dependencies=[allow("processing")])
-def start_import(body: ImportStart, cur=Depends(get_cursor)):
+def start_import(body: ImportStart, cur=Depends(get_cursor, scope="function")):
     """Registers a new import. The same CSV file (same hash) returns 409."""
     cur.execute(
         "INSERT INTO import_log (file_name, file_hash, period_start, period_end) "
@@ -78,7 +78,7 @@ def start_import(body: ImportStart, cur=Depends(get_cursor)):
 
 @router.patch("/imports/{import_id}", response_model=ImportRecord,
               dependencies=[allow("processing")])
-def update_import(import_id: UUID, body: ImportUpdate, cur=Depends(get_cursor)):
+def update_import(import_id: UUID, body: ImportUpdate, cur=Depends(get_cursor, scope="function")):
     """Updates the status and result of an import."""
     fields = body.model_dump(exclude_unset=True)
     if not fields:
