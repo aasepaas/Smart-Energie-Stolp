@@ -10,7 +10,7 @@ src/data_processing_service/
   import_orchestrator.py  voert de stappen in volgorde uit
   csv_parser.py           decimale komma, quotes, tijd naar UTC
   validator.py            dubbelen, gaps, limieten per meter
-  backend_client.py       weg naar de Backend API (nu: dry-run)
+  backend_client.py       enige weg naar de Backend API (httpx)
   models.py               importrapport en meldingen
   config.py               limieten en instellingen
   __main__.py             handmatig importeren vanaf de command line
@@ -33,8 +33,9 @@ Later volgen `meter_linker.py`, `simultaneity_calculator.py` en `training_notifi
 
 ## Gebruik
 
+In de dev-container staan `BACKEND_API_URL` en `SES_TOKEN_PROCESSING` al klaar (`compose.yaml`) en draait de Backend API als eigen container.
+
 ```bash
-pip install -e "services/data-processing-service[dev]"
 cd services/data-processing-service
 
 python -m data_processing_service tests/fixtures/testset_wintertijd_2026.csv     # importeren
@@ -45,4 +46,13 @@ pytest -v                                                                       
 
 ## Backend API
 
-De Backend API staat nog niet op main. `backend_client.py` volgt het contract van branch `ses-214-backend_api` (`/v1/meters`, `/v1/readings`, `/v1/imports`). Tot die klaar is schrijft de dry-run backend elk verzoek als JSON naar `data/dryrun/<import_id>/` (staat in `.gitignore`). Opnieuw beginnen: verwijder `data/dryrun`.
+`backend_client.py` gebruikt de Backend API (`services/backend-api`) in deze volgorde:
+
+1. `POST /v1/imports`: import registreren in `import_log` (`409` = bestand al geïmporteerd)
+2. `GET /v1/meters` en `POST /v1/meters`: nieuwe meters toevoegen (readings verwijst ernaar)
+3. `PUT /v1/readings`: metingen upserten, per 10.000 rijen
+4. `PATCH /v1/imports/{id}`: status, periode, aantal rijen en nieuwe meters
+
+Gaat er iets mis, dan wordt de import in `import_log` op `failed` gezet met de foutmelding.
+
+De unit tests gebruiken een nagebootste Backend API. `test_integratie_met_backend_api` importeert de testset in de echte database van de dev-container en ruimt die daarna op; buiten de dev-container wordt die test overgeslagen.

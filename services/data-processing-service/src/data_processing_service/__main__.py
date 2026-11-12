@@ -1,6 +1,6 @@
 """Handmatig importeren vanaf de command line.
 
-    python -m data_processing_service <bestand.csv>                 importeren (dry-run backend)
+    python -m data_processing_service <bestand.csv>                 importeren via de Backend API
     python -m data_processing_service <bestand.csv> --validate-only alleen controleren
     python -m data_processing_service <bestand.csv> --all           alle meldingen tonen
     python -m data_processing_service <bestand.csv> --json          rapport als JSON
@@ -13,8 +13,9 @@ import json
 import sys
 from pathlib import Path
 
-from .backend_client import DryRunBackendClient, create_backend
-from .import_orchestrator import run_import, save_report
+from . import backend_client
+from .backend_client import BackendError
+from .import_orchestrator import run_import
 from .models import ImportReport
 
 EXIT_CODES = {"succeeded": 0, "validated": 0, "failed": 1, "duplicate": 2}
@@ -31,19 +32,22 @@ def main(argv: list[str] | None = None) -> int:
 
     if not args.file.is_file():
         parser.error(f"bestand niet gevonden: {args.file}")
-    backend = None if args.validate_only else create_backend()
-    report = run_import(args.file.read_bytes(), args.file.name, backend)
-
-    report_path = None
-    if isinstance(backend, DryRunBackendClient) and report.status != "duplicate":
-        report_path = save_report(report, backend.import_dir(report.import_id))
+    backend = None
+    if not args.validate_only:
+        try:
+            backend = backend_client.create_backend()
+        except BackendError as exc:
+            parser.error(str(exc))
+    try:
+        report = run_import(args.file.read_bytes(), args.file.name, backend)
+    finally:
+        if backend is not None:
+            backend.close()
 
     if args.json:
         print(json.dumps(report.to_dict(), indent=2, ensure_ascii=False))
     else:
         print_report(report, show_all=args.all)
-        if report_path:
-            print(f"\nDry-run uitvoer: {report_path.parent}")
     return EXIT_CODES.get(report.status, 1)
 
 

@@ -9,31 +9,27 @@ Nog niet in deze story (volgen later): meter_linker, simultaneity_calculator, tr
 from __future__ import annotations
 
 import hashlib
-import json
-from pathlib import Path
 from typing import Any
 
 import pandas as pd
 
 from . import config
-from .backend_client import BackendClient, DuplicateImportError
+from .backend_client import BackendClient, BackendError, DuplicateImportError
 from .csv_parser import parse_csv
 from .models import CsvFormatError, ImportReport
 from .validator import validate
 
 
-def file_hash(content: bytes) -> str:
-    return hashlib.sha256(content).hexdigest()
-
-
 def register_import(content: bytes, file_name: str, backend: BackendClient) -> ImportReport:
-    """Stap 1 (Import endpoint): bestandsnaam en hash vastleggen. 409 -> status 'duplicate'."""
-    report = ImportReport(file_name=file_name, file_hash=file_hash(content))
+    """Stap 1 (Import endpoint): bestandsnaam en hash vastleggen in import_log."""
+    report = ImportReport(file_name=file_name, file_hash=hashlib.sha256(content).hexdigest())
     try:
         report.import_id = backend.start_import(file_name, report.file_hash)
     except DuplicateImportError as exc:
         report.status = "duplicate"
-        report.import_id = exc.existing_id
+        report.error_message = str(exc)
+    except BackendError as exc:
+        report.status = "failed"
         report.error_message = str(exc)
     return report
 
@@ -45,11 +41,7 @@ def process_import(report: ImportReport, content: bytes, backend: BackendClient 
         parsed = parse_csv(content)
         validated = validate(parsed.rows, meter_limits)
     except CsvFormatError as exc:
-        report.status = "failed"
-        report.error_message = str(exc)
-        if backend is not None and report.import_id:
-            backend.update_import(report.import_id, status="failed", error_message=str(exc))
-        return report
+        return _fail(report, backend, str(exc))
 
     rows = validated.rows
     report.rows_in_file = parsed.rows_in_file
@@ -76,16 +68,13 @@ def process_import(report: ImportReport, content: bytes, backend: BackendClient 
         payload = readings_payload(rows)
         for start in range(0, len(payload), config.MAX_BATCH):
             backend.upsert_readings(payload[start:start + config.MAX_BATCH])
-        report.status = "succeeded"
         backend.update_import(report.import_id, status="succeeded",
                               period_start=report.period_start, period_end=report.period_end,
                               row_count=report.rows_accepted,
                               new_meter_count=len(report.new_meters))
-    except Exception as exc:  # backend onbereikbaar of weigert: import markeren als mislukt
-        report.status = "failed"
-        report.error_message = f"wegschrijven mislukt: {exc}"
-        backend.update_import(report.import_id, status="failed",
-                              error_message=report.error_message)
+        report.status = "succeeded"
+    except BackendError as exc:
+        return _fail(report, backend, f"wegschrijven mislukt: {exc}")
     return report
 
 
@@ -93,10 +82,10 @@ def run_import(content: bytes, file_name: str, backend: BackendClient | None,
                meter_limits: dict[str, float] | None = None) -> ImportReport:
     """Volledige import in één keer (CLI). backend=None: alleen valideren."""
     if backend is None:
-        return process_import(ImportReport(file_name, file_hash(content)), content, None,
-                              meter_limits)
+        report = ImportReport(file_name, hashlib.sha256(content).hexdigest())
+        return process_import(report, content, None, meter_limits)
     report = register_import(content, file_name, backend)
-    if report.status == "duplicate":
+    if report.status != "running":
         return report
     return process_import(report, content, backend, meter_limits)
 
@@ -110,8 +99,13 @@ def readings_payload(rows: pd.DataFrame) -> list[dict[str, Any]]:
     ]
 
 
-def save_report(report: ImportReport, directory: Path) -> Path:
-    directory.mkdir(parents=True, exist_ok=True)
-    path = directory / "report.json"
-    path.write_text(json.dumps(report.to_dict(), indent=2, ensure_ascii=False), encoding="utf-8")
-    return path
+def _fail(report: ImportReport, backend: BackendClient | None, message: str) -> ImportReport:
+    """Import als mislukt markeren, ook in import_log als dat nog lukt."""
+    report.status = "failed"
+    report.error_message = message
+    if backend is not None and report.import_id:
+        try:
+            backend.update_import(report.import_id, status="failed", error_message=message[:1000])
+        except BackendError:
+            pass  # Backend API onbereikbaar: de fout staat al in het rapport
+    return report
