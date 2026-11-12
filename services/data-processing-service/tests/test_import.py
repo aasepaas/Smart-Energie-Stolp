@@ -1,13 +1,12 @@
 """Import end-to-end: orchestrator, backend client, endpoint en CLI.
 
-De unit tests praten met een nagebootste Backend API (httpx.MockTransport) die dezelfde
-paden, statuscodes en regels heeft als services/backend-api. De integratietest onderaan
-draait tegen de echte Backend API in de dev-container en wordt anders overgeslagen.
+Deze tests praten met een nagebootste Backend API (httpx.MockTransport) die dezelfde
+paden, statuscodes en regels heeft als services/backend-api. Of de data echt in de
+database komt, test test_database.py.
 """
 
 import hashlib
 import json
-import os
 import uuid
 from pathlib import Path
 
@@ -199,48 +198,3 @@ def test_lokale_export_uit_data_map():
     report = run_import(REPO_DATA.read_bytes(), REPO_DATA.name, backend=None)
     assert report.status == "validated" and report.rows_rejected == 0
     assert not report.gaps
-
-
-# --- Integratie met de echte Backend API (alleen in de dev-container) ---------------------
-
-def _backend_bereikbaar() -> bool:
-    url = os.environ.get("BACKEND_API_URL", "")
-    if not url or not os.environ.get("DATABASE_URL"):
-        return False
-    try:
-        return httpx.get(url.removesuffix("/v1") + "/health", timeout=3).is_success
-    except httpx.HTTPError:
-        return False
-
-
-@pytest.mark.skipif(not _backend_bereikbaar(), reason="Backend API niet bereikbaar")
-def test_integratie_met_backend_api():
-    """Importeert de testset in de echte database en ruimt die daarna weer op."""
-    import psycopg
-
-    content = read("testset_wintertijd_2026.csv")
-    meters = ["GV90", "KV90", "KV91"]
-
-    def opruimen():
-        with psycopg.connect(os.environ["DATABASE_URL"]) as conn:
-            conn.execute("DELETE FROM readings WHERE meter_reference = ANY(%s)", [meters])
-            conn.execute("DELETE FROM meters WHERE meter_reference = ANY(%s)", [meters])
-            conn.execute("DELETE FROM import_log WHERE file_hash = %s",
-                         [hashlib.sha256(content).hexdigest()])
-
-    opruimen()
-    try:
-        backend = BackendClient()
-        report = run_import(content, "testset.csv", backend)
-        assert report.status == "succeeded", report.error_message
-        assert report.new_meters == meters
-
-        opgeslagen = backend._request("GET", "/readings", params={
-            "start": "2026-10-24T00:00:00+00:00", "end": "2026-10-26T00:00:00+00:00",
-            "meter_reference": meters})
-        assert len(opgeslagen) == 476
-
-        assert run_import(content, "testset.csv", backend).status == "duplicate"
-        backend.close()
-    finally:
-        opruimen()
