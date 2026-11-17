@@ -114,7 +114,14 @@ FRONTEND_DATABASE_URL=postgresql://ses_frontend:user@db:5432/ses \
 uvicorn frontend_api.main:app --host 0.0.0.0 --port 8002 --reload
 ```
 
-Then open `http://localhost:8002/docs`. The first account has to be created directly in the database (as `ses` or `ses_dba`), with a hash from `python -c "from frontend_api.authentication import hash_password; print(hash_password('...'))"`.
+Then open `http://localhost:8002/docs`. Create the first account from the command line:
+
+```bash
+python -m frontend_api.create_user admin@example.org                     # administrator, asks for a password
+SES_USER_PASSWORD='...' python -m frontend_api.create_user p01@example.org --role participant --participant-id <uuid>
+```
+
+The command uses `FRONTEND_DATABASE_URL` and acts as `web_admin`; exit code `2` means the account already exists.
 
 ## Testing
 

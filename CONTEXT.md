@@ -178,7 +178,7 @@ Design: [`database/erd/ses-database.dbml`](database/erd/ses-database.dbml). Sche
 | Backend API | Working, endpoints listed in `services/backend-api/README.md` |
 | Data processing service | Import, parser, validator and simultaneity calculator (recalculated after each import) working; meter linker and training notifier still to do |
 | Frontend API | Working, endpoints listed in `services/frontend-api/README.md` |
-| Web app | Not started (README only) |
+| Web app | Demo admin page: CSV import and simultaneity per day, no login form or roles yet (`web-app/README.md`) |
 | Training pipeline, Forecast pipeline | Not started (README only) |
 | `packages/ses-common` | Not started (README only) |
 

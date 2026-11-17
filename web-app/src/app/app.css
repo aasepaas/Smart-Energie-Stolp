@@ -1,0 +1,382 @@
+/* Design tokens. Chart series color from the validated reference palette (slot 1, blue),
+   with its own step for dark mode. */
+:root {
+  color-scheme: light;
+  --surface-0: #f4f4f2;
+  --surface-1: #fcfcfb;
+  --border: #e3e2de;
+  --grid: #ebeae6;
+  --axis: #c9c8c2;
+  --hover: rgba(11, 11, 11, 0.05);
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #6d6c67;
+  --series-1: #2a78d6;
+  --accent: #1f63b8;
+  --accent-text: #ffffff;
+  --good: #0f7b3e;
+  --good-bg: #e3f3e8;
+  --critical: #b42318;
+  --critical-bg: #fde8e6;
+  --running-bg: #e8f0fb;
+  --radius: 10px;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.5;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --surface-0: #111110;
+    --surface-1: #1a1a19;
+    --border: #2e2e2c;
+    --grid: #2a2a28;
+    --axis: #4a4a46;
+    --hover: rgba(240, 239, 236, 0.06);
+    --text-primary: #f0efec;
+    --text-secondary: #c3c2b7;
+    --text-muted: #9a998f;
+    --series-1: #3987e5;
+    --accent: #3987e5;
+    --accent-text: #0b0b0b;
+    --good: #5cc98a;
+    --good-bg: #16301f;
+    --critical: #f28b82;
+    --critical-bg: #3a1a17;
+    --running-bg: #1b2a3f;
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --surface-0: #111110;
+  --surface-1: #1a1a19;
+  --border: #2e2e2c;
+  --grid: #2a2a28;
+  --axis: #4a4a46;
+  --hover: rgba(240, 239, 236, 0.06);
+  --text-primary: #f0efec;
+  --text-secondary: #c3c2b7;
+  --text-muted: #9a998f;
+  --series-1: #3987e5;
+  --accent: #3987e5;
+  --accent-text: #0b0b0b;
+  --good: #5cc98a;
+  --good-bg: #16301f;
+  --critical: #f28b82;
+  --critical-bg: #3a1a17;
+  --running-bg: #1b2a3f;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--surface-0);
+  color: var(--text-primary);
+}
+
+h1,
+h2 {
+  margin: 0;
+  line-height: 1.25;
+}
+
+h2 {
+  font-size: 1.125rem;
+}
+
+.page {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+}
+
+.page-header {
+  margin-bottom: 20px;
+}
+
+.app-title {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.page-header h1 {
+  font-size: 1.75rem;
+}
+
+main {
+  display: grid;
+  gap: 16px;
+}
+
+.card {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  min-width: 0;
+}
+
+.card-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.muted {
+  color: var(--text-muted);
+  margin: 4px 0 0;
+}
+
+/* ---------- Import ---------- */
+
+.upload-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin-top: 16px;
+}
+
+.file-field input {
+  max-width: 100%;
+  color: var(--text-secondary);
+}
+
+button {
+  font: inherit;
+  font-weight: 600;
+  padding: 8px 18px;
+  border-radius: 8px;
+  border: none;
+  background: var(--accent);
+  color: var(--accent-text);
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+button:focus-visible,
+input:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.status {
+  min-height: 1.5em;
+  margin: 12px 0 0;
+}
+
+.status-done {
+  color: var(--good);
+}
+
+.status-error {
+  color: var(--critical);
+}
+
+.status-uploading,
+.status-processing {
+  color: var(--text-secondary);
+}
+
+.banner {
+  margin: 0;
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  background: var(--critical-bg);
+  color: var(--critical);
+}
+
+/* ---------- Dashboard ---------- */
+
+.period {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.period label {
+  display: grid;
+  gap: 2px;
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+
+.period input {
+  font: inherit;
+  font-size: 0.9375rem;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-1);
+  color: var(--text-primary);
+}
+
+.figures {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.4fr) repeat(3, minmax(140px, 1fr));
+  gap: 12px;
+  margin: 20px 0 8px;
+}
+
+.hero,
+.tile {
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: var(--surface-0);
+}
+
+.figure-label {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+
+.hero-value {
+  font-size: 3rem;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.tile-value {
+  font-size: 1.375rem;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+.chart {
+  margin: 16px 0 0;
+}
+
+.chart figcaption {
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.tooltip {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  font-size: 0.8125rem;
+  min-width: 180px;
+}
+
+.tooltip-title {
+  color: var(--text-secondary);
+}
+
+.tooltip-value {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 2px 0 4px;
+}
+
+.tooltip-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  color: var(--text-secondary);
+}
+
+.table-view {
+  margin-top: 12px;
+}
+
+.table-view summary {
+  cursor: pointer;
+  color: var(--text-secondary);
+  width: fit-content;
+}
+
+/* ---------- Tables ---------- */
+
+.table-scroll {
+  overflow-x: auto;
+  margin-top: 12px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+th {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.number {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.file-name {
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+}
+
+.badge-succeeded {
+  background: var(--good-bg);
+  color: var(--good);
+}
+
+.badge-failed {
+  background: var(--critical-bg);
+  color: var(--critical);
+}
+
+.badge-running {
+  background: var(--running-bg);
+  color: var(--text-secondary);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  .figures {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .hero {
+    grid-column: 1 / -1;
+  }
+
+  .hero-value {
+    font-size: 2.5rem;
+  }
+}

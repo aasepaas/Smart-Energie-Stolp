@@ -416,3 +416,18 @@ def test_viewer_and_superadmin_accounts(d):
                   ).status_code == 201
     login = c.post("/v1/auth/login", json={"email": superadmin["email"], "password": PASSWORD})
     assert login.json()["user"]["role"] == "superadmin"
+
+
+def test_create_user_command(d, monkeypatch, capsys):
+    from frontend_api.create_user import main
+
+    email = f"cli-{d['tag']}@example.org"
+    monkeypatch.setenv("SES_USER_PASSWORD", PASSWORD)
+    assert main([email]) == 0
+    assert "Created administrator account" in capsys.readouterr().out
+    assert main([email]) == 2  # already exists
+    login = d["client"].post("/v1/auth/login", json={"email": email, "password": PASSWORD})
+    assert login.status_code == 200 and login.json()["user"]["role"] == "administrator"
+
+    monkeypatch.setenv("SES_USER_PASSWORD", "short")
+    assert main([f"cli2-{d['tag']}@example.org"]) == 1
