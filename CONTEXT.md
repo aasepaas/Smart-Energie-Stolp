@@ -177,7 +177,8 @@ Design: [`database/erd/ses-database.dbml`](database/erd/ses-database.dbml). Sche
 | Database schema, roles, RLS (migration `0001`) | Working |
 | Backend API | Working, endpoints listed in `services/backend-api/README.md` |
 | Data processing service | Import, parser, validator and simultaneity calculator (recalculated after each import) working; meter linker and training notifier still to do |
-| Frontend API, Web app | Not started (README only) |
+| Frontend API | Working, endpoints listed in `services/frontend-api/README.md`; uploads need the Data processing service in compose |
+| Web app | Not started (README only) |
 | Training pipeline, Forecast pipeline | Not started (README only) |
 | `packages/ses-common` | Not started (README only) |
 
@@ -188,7 +189,7 @@ Sprint 1 focus: database, Backend API, model registry (possibly with a simulated
 These are known and should be fixed in their own ticket, not as a side effect of another change.
 
 - `services/README.md` mentions `processing-service/`; the folder is `data-processing-service/`.
-- `services/frontend-api/README.md` and the port label in `.devcontainer/devcontainer.json` still say Flask; the decision is FastAPI.
+- The port label in `.devcontainer/devcontainer.json` still says Flask; the decision is FastAPI.
 - The C4 model mentions tables `meter_links` and per-participant `simultaneity`; the DBML (leading for the database) uses `meters` and `community_simultaneity`.
 - Several READMEs, comments, test names and fixtures are still in Dutch; everything must become English (see DEV.md).
 - `data-processing-service` uses hatchling and Python `>=3.10`; the standard is setuptools and Python `>=3.12`.

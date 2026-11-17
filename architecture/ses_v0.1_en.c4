@@ -199,20 +199,20 @@ model {
         technology 'FastAPI routers, Pydantic'
       }
       component authentication 'Authentication' {
-        description 'Verifies the JWT and checks whether the role and owner may access the requested data'
-        technology 'JWT, role-based access'
+        description 'Logs users in, issues access and refresh tokens and checks whether the role and owner may access the requested data'
+        technology 'JWT, Argon2, role-based access'
       }
       component queryBuilder 'Query builder' {
         description 'Translates a request into a parameterised query, limited to the data of the caller'
-        technology 'SQLAlchemy Core'
+        technology 'psycopg, parameterised SQL'
       }
       component queryExecutor 'Query executor' {
-        description 'Runs the query with the read-mostly frontend role and returns the rows'
+        description 'Runs the query in one transaction per request with the database role of the user and the participant for row-level security'
         technology 'psycopg connection pool'
       }
       component uploadHandler 'Upload handler' {
         description 'Checks file type and size of a CSV upload and forwards it to the data processing service'
-        technology 'multipart streaming'
+        technology 'httpx, multipart'
       }
 
       apiEndpoints -> authentication 'verifies token and permissions' {
