@@ -1,0 +1,28 @@
+[project]
+name = "ses-frontend-api"
+version = "1.0.0"
+description = "Single entry point for the Smart Energie Stolp web app"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.121",
+    "uvicorn[standard]>=0.30",
+    "psycopg[binary,pool]>=3.2",
+    "pydantic>=2.7",
+    "python-multipart>=0.0.9",
+    "httpx>=0.27",
+    "pyjwt>=2.8",
+    "argon2-cffi>=23.1",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

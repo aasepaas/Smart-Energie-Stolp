@@ -24,6 +24,7 @@ from data_processing_service.import_orchestrator import run_import
 FIXTURES = Path(__file__).parent / "fixtures"
 REPO_DATA = Path(__file__).resolve().parents[3] / "data" / "meterdata.csv"
 TOKEN = "test-processing"
+FRONTEND = {"Authorization": "Bearer test-frontend"}
 
 
 def read(name: str) -> bytes:
@@ -189,7 +190,7 @@ def test_alleen_valideren_schrijft_niets(api):
 
 def test_endpoint_upload_en_status(api):
     from data_processing_service.import_endpoint import app
-    client = TestClient(app)
+    client = TestClient(app, headers=FRONTEND)
     files = {"file": ("testset.csv", read("testset_wintertijd_2026.csv"), "text/csv")}
 
     response = client.post("/imports", files=files)
@@ -204,12 +205,23 @@ def test_endpoint_upload_en_status(api):
 
 def test_endpoint_validate_only_en_fouten(api):
     from data_processing_service.import_endpoint import app
-    client = TestClient(app)
+    client = TestClient(app, headers=FRONTEND)
     ok = client.post("/imports?validate_only=true",
                      files={"file": ("f.csv", read("fouten.csv"), "text/csv")})
     assert ok.status_code == 200 and ok.json()["rows_rejected"] == 6
     assert client.post("/imports", files={"file": ("f.txt", b"x", "text/plain")}).status_code == 415
     assert client.get("/imports/bestaat-niet").status_code == 404
+
+
+def test_endpoint_requires_frontend_token(api):
+    from data_processing_service.import_endpoint import app
+    files = {"file": ("f.csv", read("fouten.csv"), "text/csv")}
+    assert TestClient(app).post("/imports", files=files).status_code == 401
+    wrong = TestClient(app, headers={"Authorization": "Bearer wrong"})
+    assert wrong.post("/imports", files=files).status_code == 401
+    assert wrong.get("/imports/x").status_code == 401
+    assert TestClient(app).get("/health").status_code == 200
+    assert api.calls == []
 
 
 def test_cli(api, capsys):

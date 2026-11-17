@@ -35,6 +35,8 @@ psql -c '\dt'                             # alle tabellen
 | `dev` | werkcontainer met Python 3.12 en Node 22 | | |
 | `db` | PostgreSQL 17 met TimescaleDB | `db:5432` | `localhost:5432` |
 | `mlflow` | MLflow tracking server en model registry | `http://mlflow:5000` | `http://localhost:5000` |
+| `frontend-api` | Frontend API with `--reload` on `src/` | `http://frontend-api:8002` | `http://localhost:8002/docs` |
+| `data-processing-service` | Data processing service with `--reload` on `src/` | `http://data-processing-service:8000` | `http://localhost:8000/docs` |
 
 - Database en gebruiker heten `ses` (wachtwoord `ses`), alleen voor lokaal gebruik. `DATABASE_URL`, de `PG*`-variabelen en `MLFLOW_TRACKING_URI` staan klaar, dus `psql` werkt zonder argumenten.
 - De werkcontainer wacht tot de database healthy is.

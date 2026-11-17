@@ -64,6 +64,12 @@ uvicorn data_processing_service.import_endpoint:app --host 0.0.0.0 --port 8000  
 pytest -v                                                                        # tests
 ```
 
+## Container and service token
+
+In the dev environment the service runs as its own container (`data-processing-service` in `.devcontainer/compose.yaml`, `http://localhost:8000/docs`) with `--reload` on `src/`.
+
+`POST /imports` and `GET /imports/{id}` only accept the Frontend API: it sends `Authorization: Bearer <SES_TOKEN_FRONTEND>` (`401` otherwise). The service does not start without `SES_TOKEN_FRONTEND`. `/health` needs no token. The command line (`python -m data_processing_service`) does not use the endpoint and needs no token.
+
 ## Backend API
 
 `backend_client.py` gebruikt de Backend API (`services/backend-api`) in deze volgorde:

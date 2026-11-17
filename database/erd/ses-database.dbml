@@ -17,7 +17,9 @@ Project ses {
 
 Enum user_role {
   participant
+  viewer [note: 'Community data only, no linked participant']
   administrator
+  superadmin [note: 'Administrator who also manages administrator accounts']
 }
 
 Enum appliance_category {
@@ -57,7 +59,7 @@ Table users {
   email varchar(255) [not null, unique]
   password_hash varchar(255) [not null]
   role user_role [not null]
-  participant_id uuid [note: 'Verplicht bij rol participant, leeg bij administrator']
+  participant_id uuid [note: 'Required for role participant, empty for all other roles']
 
   Note: 'Inlogaccounts van het webportaal'
 }

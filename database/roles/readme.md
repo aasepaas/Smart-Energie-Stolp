@@ -83,7 +83,7 @@ Het model registry (MLflow) heeft een eigen opslag en valt buiten deze rollen.
 
 ## 4. Installatie
 
-De rollen, rechten en row-level security worden aangemaakt door Alembic-migratie `0001` (`../migrations/versions/0001_initial_schema.py`), samen met de tabellen. In de dev container gebeurt dat vanzelf bij elke start (`alembic upgrade head`).
+De rollen, rechten en row-level security worden aangemaakt door Alembic-migratie `0001` (`../migrations/versions/0001_initial_schema.py`), samen met de tabellen. Migratie `0002` (`../migrations/versions/0002_add_viewer_superadmin_roles.py`) voegt de applicatierollen `viewer` en `superadmin` toe aan de enum `user_role`; de rechten veranderen daardoor niet. In de dev container gebeurt dat vanzelf bij elke start (`alembic upgrade head`).
 
 - Rollen gelden voor de hele PostgreSQL-server. De migratie maakt ze alleen aan als ze nog niet bestaan, en een `downgrade` laat ze staan.
 - De wachtwoorden van de inlogrollen staan niet in git. De migratie zet ze uit omgevingsvariabelen; zonder variabele krijgt de rol geen wachtwoord en kan hij niet inloggen.
