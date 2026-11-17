@@ -20,6 +20,9 @@ from .query_executor import pool
 async def lifespan(app: FastAPI):
     if len(config.JWT_SECRET) < 32:
         raise RuntimeError("SES_JWT_SECRET is missing or shorter than 32 characters")
+    if not config.PROCESSING_SERVICE_TOKEN:
+        raise RuntimeError("Service token for the data processing service missing: "
+                           "set SES_TOKEN_FRONTEND")
     pool.open()
     yield
     pool.close()

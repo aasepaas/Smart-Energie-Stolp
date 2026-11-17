@@ -5,7 +5,7 @@ Single entry point for the web app (container **Frontend API**, C4 view 3.2). Bu
 - logs users in and issues JWTs;
 - checks the role and whether the user may see the requested data;
 - answers queries directly from the database with login role `ses_frontend`;
-- forwards CSV uploads to the Data processing service (`POST /imports`).
+- forwards CSV uploads to the Data processing service (`POST /imports`, with service token `SES_TOKEN_FRONTEND`).
 
 ## How it works
 
@@ -97,6 +97,7 @@ Uploads: the file must end in `.csv`, be non-empty and at most 200 MB (`MAX_UPLO
 | `REFRESH_COOKIE_SECURE` | `true` | `false` only for local http |
 | `CORS_ORIGINS` | empty | Web app origins (comma separated), e.g. `http://localhost:5173` |
 | `PROCESSING_SERVICE_URL` | `http://data-processing-service:8000` | Data processing service |
+| `SES_TOKEN_FRONTEND` | – (required) | Service token sent to the data processing service |
 | `PROCESSING_TIMEOUT` | `300` | Seconds per upload request |
 | `MAX_UPLOAD_BYTES` | `209715200` | Largest CSV upload |
 | `MAX_PERIOD_DAYS` | `366` | Longest period per data request |
@@ -108,7 +109,7 @@ Generate a secret with `python -c "import secrets; print(secrets.token_urlsafe(4
 
 ```bash
 cd services/frontend-api
-SES_JWT_SECRET=dev-secret-of-at-least-thirty-two-chars \
+SES_JWT_SECRET=dev-secret-of-at-least-thirty-two-chars SES_TOKEN_FRONTEND=dev-frontend \
 FRONTEND_DATABASE_URL=postgresql://ses_frontend:user@db:5432/ses \
 uvicorn frontend_api.main:app --host 0.0.0.0 --port 8002 --reload
 ```
@@ -126,6 +127,5 @@ pytest -v
 
 ## Known limitations
 
-- The database enum `user_role` only has `participant` and `administrator`. The API supports `viewer` and `superadmin`, but such accounts can only be created after a migration adds them (until then: `422`).
 - The detailed import report (issues per line) only exists in the processing service; `GET /uploads/{id}` shows status and counts from `import_log`.
 - No rate limiting on `/auth/login` yet.

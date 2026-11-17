@@ -2,7 +2,7 @@
   "name": "Smart Energie Stolp",
   "dockerComposeFile": "compose.yaml",
   "service": "dev",
-  "runServices": ["dev", "db", "mlflow", "backend-api", "frontend-api"],
+  "runServices": ["dev", "db", "mlflow", "backend-api", "frontend-api", "data-processing-service"],
   "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
   "shutdownAction": "stopCompose",
   "features": {
@@ -11,10 +11,11 @@
     },
     "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
   },
-  "forwardPorts": [5173, 8000],
+  "forwardPorts": [5173, 8000, 8002],
   "portsAttributes": {
     "5173": { "label": "Web app (Vite)" },
-    "8000": { "label": "Flask-service" }
+    "8000": { "label": "Data processing service" },
+    "8002": { "label": "Frontend API" }
   },
   "postCreateCommand": "bash .devcontainer/post-create.sh",
   "postStartCommand": "alembic upgrade head",

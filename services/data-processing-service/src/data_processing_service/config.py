@@ -1,5 +1,10 @@
 """Instellingen van de Data processing service."""
 
+import os
+
+# Service token of the Frontend API, the only caller of POST /imports.
+FRONTEND_TOKEN = os.environ.get("SES_TOKEN_FRONTEND", "")
+
 # Maximale energie per kwartier per metertype (kWh), alleen voor waarschuwingen.
 # KV: grootste kleinverbruikaansluiting 3x80A  -> ~55 kW  -> ~13,8 kWh per kwartier
 # GV: grootste aansluiting in de Stolp 250A (C4) -> ~173 kW -> ~43,3 kWh per kwartier

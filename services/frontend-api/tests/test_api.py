@@ -1,6 +1,7 @@
 """Integration test of the Frontend API against a real database.
 
-Requires the database with migration 0001 (schema, roles and row-level security).
+Requires the database with migrations 0001 (schema, roles and row-level security)
+and 0002 (roles viewer and superadmin).
 The test creates its own data (two participants in June 2098) through a superuser
 connection and removes it afterwards.
 
@@ -8,8 +9,8 @@ connection and removes it afterwards.
     FRONTEND_DATABASE_URL=postgresql://ses_frontend:user@db:5432/ses \
     pytest tests/test_api.py -v
 
-The database enum user_role only knows participant and administrator so far; viewer
-and superadmin are tested with tokens made directly by the authentication module.
+Most tests use tokens made directly by the authentication module; the login tests and
+the account tests go through the database.
 """
 
 import os
@@ -393,3 +394,25 @@ def test_only_superadmin_manages_admin_accounts(d):
 def test_cannot_delete_yourself(d):
     c, h = d["client"], bearer(d["admin"])
     assert c.delete(f"/v1/users/{d['user_admin']}", headers=h).status_code == 409
+
+
+def test_viewer_and_superadmin_accounts(d):
+    c = d["client"]
+    viewer = {"email": f"viewer-{d['tag']}@example.org", "password": PASSWORD, "role": "viewer"}
+    assert c.post("/v1/users", headers=bearer(d["admin"]), json=viewer).status_code == 201
+    login = c.post("/v1/auth/login", json={"email": viewer["email"], "password": PASSWORD})
+    assert login.json()["user"] == {**login.json()["user"], "role": "viewer",
+                                    "participant_id": None}
+    h = {"Authorization": f"Bearer {login.json()['access_token']}"}
+    assert c.get("/v1/simultaneity", headers=h, params={"start": START, "end": END}
+                 ).status_code == 200
+    assert c.get("/v1/readings", headers=h, params={"start": START, "end": END}
+                 ).status_code == 403
+
+    superadmin = {"email": f"super-{d['tag']}@example.org", "password": PASSWORD,
+                  "role": "superadmin"}
+    assert c.post("/v1/users", headers=bearer(d["admin"]), json=superadmin).status_code == 403
+    assert c.post("/v1/users", headers=bearer(d["superadmin"]), json=superadmin
+                  ).status_code == 201
+    login = c.post("/v1/auth/login", json={"email": superadmin["email"], "password": PASSWORD})
+    assert login.json()["user"]["role"] == "superadmin"

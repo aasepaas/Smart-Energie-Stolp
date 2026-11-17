@@ -32,6 +32,8 @@ CORS_ORIGINS = [o.strip() for o in os.environ.get("CORS_ORIGINS", "").split(",")
 PROCESSING_SERVICE_URL = os.environ.get(
     "PROCESSING_SERVICE_URL", "http://data-processing-service:8000"
 )
+# Service token the processing service expects from the Frontend API (required)
+PROCESSING_SERVICE_TOKEN = os.environ.get("SES_TOKEN_FRONTEND", "")
 PROCESSING_TIMEOUT = float(os.environ.get("PROCESSING_TIMEOUT", "300"))
 MAX_UPLOAD_BYTES = int(os.environ.get("MAX_UPLOAD_BYTES", str(200 * 1024 * 1024)))
 

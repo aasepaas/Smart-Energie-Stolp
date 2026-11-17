@@ -178,8 +178,8 @@ model {
       authentication -> apiClient 'logs in and refreshes token' {
         technology 'POST /auth/login, POST /auth/refresh'
       }
-      dataView -> apiClient 'requests readings, simultaneity, prices and advice' {
-        technology 'GET /readings, /simultaneity, /prices, /advice'
+      dataView -> apiClient 'requests readings, simultaneity, forecasts, prices and advice' {
+        technology 'GET /readings, /simultaneity, /forecasts, /prices, /advice'
       }
       dataImport -> apiClient 'uploads CSV file' {
         technology 'POST /uploads'
@@ -497,7 +497,7 @@ model {
         description 'Pseudonym, connection (up to 250 A), comfort limits and appliance categories: transport, heat pump, air conditioning'
       }
       users = table 'users' {
-        description 'Login accounts with role (participant or administrator) and link to participant'
+        description 'Login accounts with role (participant, viewer, administrator or superadmin) and link to participant'
       }
       simultaneity = table 'simultaneity' {
         description 'Shared kWh per quarter hour and participant'
@@ -574,9 +574,9 @@ model {
   }
   ses.frontendAPI -> ses.processingService 'forwards uploaded CSV file' {
     #level2
-    technology 'HTTP, POST /imports (multipart)'
+    technology 'HTTP, POST /imports (multipart), service token'
   }
-  ses.frontendAPI -> ses.database 'reads participant data and prices, writes settings and feedback' {
+  ses.frontendAPI -> ses.database 'reads participant data and prices, writes feedback, comfort limits and admin data' {
     #level2
     technology 'SQL over TCP 5432, frontend role'
   }
@@ -636,9 +636,9 @@ model {
   }
   ses.frontendAPI.uploadHandler -> ses.processingService.importEndpoint 'forwards uploaded CSV file' {
     #level3
-    technology 'HTTP, POST /imports (multipart)'
+    technology 'HTTP, POST /imports (multipart), service token'
   }
-  ses.frontendAPI.queryExecutor -> ses.database.sqlInterface 'reads participant data and prices, writes settings and feedback' {
+  ses.frontendAPI.queryExecutor -> ses.database.sqlInterface 'reads participant data and prices, writes feedback, comfort limits and admin data' {
     #level3
     technology 'SQL over TCP 5432, frontend role'
   }

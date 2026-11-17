@@ -22,8 +22,11 @@ from . import config
 
 def get_processing_client() -> Iterator[httpx.Client]:
     """HTTP client for the Data processing service (replaced in the tests)."""
-    with httpx.Client(base_url=config.PROCESSING_SERVICE_URL,
-                      timeout=config.PROCESSING_TIMEOUT) as client:
+    with httpx.Client(
+        base_url=config.PROCESSING_SERVICE_URL,
+        timeout=config.PROCESSING_TIMEOUT,
+        headers={"Authorization": f"Bearer {config.PROCESSING_SERVICE_TOKEN}"},
+    ) as client:
         yield client
 
 

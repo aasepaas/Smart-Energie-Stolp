@@ -33,7 +33,7 @@ class BackendError(Exception):
 
 
 class DuplicateImportError(BackendError):
-    """Dit bestand (zelfde SHA-256) is al eerder geimporteerd (409)."""
+    """This file (same SHA-256) was imported before (409)."""
 
 
 class BackendClient:
@@ -67,7 +67,7 @@ class BackendClient:
             return self._request("POST", "/imports", json=body)["id"]
         except BackendError as exc:
             if exc.status_code == 409:
-                raise DuplicateImportError("dit bestand is al eerder geimporteerd", 409) from exc
+                raise DuplicateImportError("This file was imported before", 409) from exc
             raise
 
     def update_import(self, import_id: str, **fields: Any) -> None:

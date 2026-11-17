@@ -28,6 +28,7 @@ services:
       SES_TOKEN_PROCESSING: dev-processing
       SES_TOKEN_TRAINING: dev-training
       SES_TOKEN_FORECAST: dev-forecast
+      SES_TOKEN_FRONTEND: dev-frontend
     depends_on:
       db:
         condition: service_healthy
@@ -85,11 +86,30 @@ services:
       REFRESH_COOKIE_SECURE: "false"
       CORS_ORIGINS: http://localhost:5173
       PROCESSING_SERVICE_URL: http://data-processing-service:8000
+      SES_TOKEN_FRONTEND: dev-frontend
     depends_on:
       db:
         condition: service_healthy
     ports:
       - "127.0.0.1:8002:8002"
+
+  data-processing-service:
+    build:
+      context: ../services/data-processing-service
+    restart: unless-stopped
+    # --reload: restarts the service on every change in src/
+    command: uvicorn data_processing_service.import_endpoint:app --host 0.0.0.0 --port 8000 --reload --reload-dir /app/src
+    volumes:
+      - ../services/data-processing-service/src:/app/src
+    environment:
+      BACKEND_API_URL: http://backend-api:8001/v1
+      SES_TOKEN_PROCESSING: dev-processing
+      SES_TOKEN_FRONTEND: dev-frontend
+    depends_on:
+      backend-api:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8000:8000"
 
   mlflow:
     image: ghcr.io/mlflow/mlflow:v3.16.1

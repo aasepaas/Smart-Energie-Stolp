@@ -61,6 +61,16 @@ def test_upload_is_forwarded(processing):
     assert b'filename="export.csv"' in body and CSV in body
 
 
+def test_real_client_sends_service_token():
+    clients = upload_handler.get_processing_client()
+    client = next(clients)
+    try:
+        assert client.headers["Authorization"] == "Bearer test-frontend"
+        assert str(client.base_url).startswith(upload_handler.config.PROCESSING_SERVICE_URL)
+    finally:
+        clients.close()
+
+
 def test_validate_only_returns_report(processing):
     calls, answer = processing
     answer.update(status=200, json={"status": "validated", "issues": []})
