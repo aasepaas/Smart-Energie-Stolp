@@ -10,6 +10,8 @@ services:
     volumes:
       - ../..:/workspaces:cached
     command: sleep infinity
+    ports:
+      - "127.0.0.1:5173:5173"
     environment:
       DATABASE_URL: postgresql://ses:ses@db:5432/ses
       PGHOST: db

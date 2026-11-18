@@ -11,9 +11,9 @@
     },
     "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
   },
-  "forwardPorts": [5173, 8000, 8002],
+  "forwardPorts": [8000, 8002],
   "portsAttributes": {
-    "5173": { "label": "Web app (Vite)" },
+    "5173": { "label": "Web app (Vite)" , "onAutoForward": "ignore"},
     "8000": { "label": "Data processing service" },
     "8002": { "label": "Frontend API" }
   },

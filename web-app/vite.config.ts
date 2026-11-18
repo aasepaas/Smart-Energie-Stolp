@@ -11,6 +11,7 @@ const apiUrl = process.env.FRONTEND_API_URL ?? 'http://frontend-api:8002'
 export default defineConfig({
   plugins: [react()],
   server: {
+    host: '0.0.0.0',
     port: 5173,
     strictPort: true,
     proxy: { '/v1': { target: apiUrl, changeOrigin: true } },
